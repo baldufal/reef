@@ -13,8 +13,11 @@ RUN npm install --production
 # Copy the rest of the application
 COPY . .
 
-# Expose the backend port
-#EXPOSE 8443
+# Run the build command to create the dist folder
+RUN npm run build
+
+# Expose the backend port (optional, uncomment if needed)
+# EXPOSE 8443
 
 # Start the application
 CMD ["node", "./dist/server.js"]
