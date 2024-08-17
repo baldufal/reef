@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../config';
+import crypto from 'crypto';
 
 export interface ThermocontrolSettableDataType {
     extra_ventilation?: number;
@@ -39,9 +40,23 @@ export const sendData = async (data: ThermocontrolSettableDataType) => {
                 'Content-Type': 'text/plain',
             },
         });
-        return null;
-    } catch (error) {
-       return "error";
+        console.log("Payload successfully sent");
+    } catch (error: any) {
+        console.error("Error occurred while sending data:", error.message || error);
+
+        // Log additional error details if available
+        if (error.response) {
+            console.error("Response data:", error.response.data);
+            console.error("Response status:", error.response.status);
+            console.error("Response headers:", error.response.headers);
+        } else if (error.request) {
+            console.error("Request made but no response received:", error.request);
+        } else {
+            console.error("Error in setting up the request:", error.message);
+        }
+
+        // Optionally, rethrow the error if you need to handle it elsewhere
+        throw error;
     }
 };
 

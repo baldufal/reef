@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 interface Config {
+    port: number;
     thermocontrol_polling_rate: number;
     thermocontrol_url: string;
     thermocontrol_key: string;

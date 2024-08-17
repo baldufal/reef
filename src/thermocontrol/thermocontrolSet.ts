@@ -17,16 +17,26 @@ export const handleTCSetConnection = (ws: WebSocket) => {
 
     ws.on('message', async (message: string) => {
         console.log(`Received message on /thermocontrol/set: ${message}`);
-
-        const messageJSON = JSON.parse(message);
-        const result = TCSetSchema.safeParse(messageJSON);
-        if (!result.success) {
-            console.error('Invalid message format:', result.error);
-            return;
+    
+        try {
+            const messageJSON = JSON.parse(message);
+            const result = TCSetSchema.safeParse(messageJSON);
+            if (!result.success) {
+                console.error('Invalid message format:', result.error);
+                return;
+            }
+    
+            // Wrap sendData with a try-catch to catch any errors
+            try {
+                await sendData(result.data);
+            } catch (error) {
+                console.error('Error sending data:', error);
+            }
+        } catch (error) {
+            console.error('Error processing WebSocket message:', error);
         }
-
-        sendData(result.data);
     });
+    
 
     ws.on('close', () => {
         console.log('Connection closed for /thermocontrol/set');

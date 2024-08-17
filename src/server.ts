@@ -11,11 +11,12 @@ import { handleTCUpdatesConnection } from './thermocontrol/thermocontrolUpdates'
 import { handleTCSetConnection } from './thermocontrol/thermocontrolSet';
 import { handleKalUpdatesConnection } from './kaleidoscope/kaleidoscopeUpdates';
 import { handleKaleidoscopeSetConnection } from './kaleidoscope/kaleidoscopeSet';
+import { config } from './config';
 
 // Load SSL certificate and key
-const privateKey = fs.readFileSync('./cert/localhost+3-key.pem', 'utf8');
-const certificate = fs.readFileSync('./cert/localhost+3.pem', 'utf8');
-const credentials = { key: privateKey, cert: certificate };
+//const privateKey = fs.readFileSync('./cert/localhost+3-key.pem', 'utf8');
+//const certificate = fs.readFileSync('./cert/localhost+3.pem', 'utf8');
+//const credentials = { key: privateKey, cert: certificate };
 
 // Initialize Express app
 const app = express();
@@ -37,9 +38,9 @@ const users: Array<{ username: string, password: string }> = [
 const JWT_SECRET = 'supergeheim';
 
 
-const httpsServer = https.createServer(credentials, app);
-//const httpsServer = http.createServer(app);
-const wss = new WebSocketServer({ server: httpsServer });
+//const httpsServer = https.createServer(credentials, app);
+const httpServer = http.createServer(app);
+const wss = new WebSocketServer({ server: httpServer });
 
 // User login route
 app.post('/login', async (req: Request, res: Response) => {
@@ -97,7 +98,7 @@ wss.on('connection', (ws: WebSocket, req: Request) => {
   });
 });
 
-// Start the HTTPS server
-httpsServer.listen(8443, () => {
-  console.log('Server running on https://localhost:8443');
+// Start the HTTP server
+httpServer.listen(config.port, () => {
+  console.log('Server running on http://localhost:' + config.port);
 });
