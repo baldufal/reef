@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { sendData } from './thermocontrolREST';
 import { z } from 'zod';
+import { config } from '../config';
 
 // Define the schema for the fields
 const TCSetSchema = z.object({
@@ -26,7 +27,9 @@ export const handleTCSetConnection = (ws: WebSocket) => {
                 return;
             }
     
-            // Wrap sendData with a try-catch to catch any errors
+            if(config.thermocontrol_mock)
+                return;
+            
             try {
                 await sendData(result.data);
             } catch (error) {

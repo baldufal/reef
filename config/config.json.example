@@ -1,9 +1,11 @@
 {
     "port": 8443,
     "token_expiry_seconds" : 3600,
+    "thermocontrol_mock" : true,
     "thermocontrol_polling_rate": 300,
     "thermocontrol_url": "http://1.2.3.4:9079",
     "thermocontrol_key" : "password",
+    "kaleidoscope_mock": true,
     "kaleidoscope_polling_rate": 300,
-    "kaleidoscope_url": "http:/1.2.3.4:3545"
+    "kaleidoscope_url": "http://1.2.3.4:3545"
   }

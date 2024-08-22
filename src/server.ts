@@ -152,5 +152,5 @@ wss.on('connection', (ws: WebSocket, req: Request) => {
 
 // Start the HTTP server
 httpServer.listen(config.port, () => {
-  console.log('Server running on http://localhost:' + config.port);
+  console.log('Server running on port ' + config.port);
 });

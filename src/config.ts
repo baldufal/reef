@@ -3,10 +3,12 @@ import path from 'path';
 
 interface Config {
     port: number;
-    token_expiry_seconds: number
+    token_expiry_seconds: number;
+    thermocontrol_mock: boolean;
     thermocontrol_polling_rate: number;
     thermocontrol_url: string;
     thermocontrol_key: string;
+    kaleidoscope_mock: boolean;
     kaleidoscope_polling_rate: number;
     kaleidoscope_url: string;
 }

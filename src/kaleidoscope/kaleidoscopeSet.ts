@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { z } from 'zod';
 import { setContinuousParameter, setDiscreteParameter, setProgram } from './kaleidoscopeREST';
+import { config } from '../config';
 
 const KSetSchema = z.object({
     action: z.enum(["program", "discrete", "continuous"]),
@@ -30,7 +31,13 @@ export const handleKaleidoscopeSetConnection = (ws: WebSocket) => {
     ws.on('message', async (message: string) => {
         console.log(`Received message on /kaleidoscope/set: ${message}`);
 
-        const messageJSON = JSON.parse(message);
+        let messageJSON;
+        try {
+            messageJSON = JSON.parse(message);
+        } catch (error) {
+            console.log('Error parsing message: ' + error)
+            return;
+        }
         const firstLevelValidation = KSetSchema.safeParse(messageJSON);
         if (!firstLevelValidation.success) {
             console.error('Invalid message format:', firstLevelValidation.error);
@@ -58,6 +65,9 @@ export const handleKaleidoscopeSetConnection = (ws: WebSocket) => {
             console.error('Invalid message format:', nestedValidation.error);
             return;
         }
+
+        if(config.kaleidoscope_mock)
+            return;
 
         switch (action) {
             case "program":

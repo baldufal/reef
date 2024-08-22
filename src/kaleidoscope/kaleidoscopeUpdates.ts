@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { config } from '../config';
 import axios from 'axios';
+import { kaleidoscopeMockData } from './mockData';
 
 interface KalUpdate {
     health: "good" | "error";
@@ -63,6 +64,8 @@ export const handleKalUpdatesConnection = (ws: WebSocket) => {
 };
 
 const fetchData = async () => {
+    if(config.kaleidoscope_mock)
+        return kaleidoscopeMockData;
     try {
         const response = await axios.get<any>(
             `${config.kaleidoscope_url}/api/v1/fixtures`

@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import { ThermocontrolDataType } from './thermocontrolREST';
 import { config } from '../config';
 import axios from 'axios';
+import { thermocontrolMockData } from './mockData';
 
 interface TCUpdates {
     health: "good" | "error";
@@ -64,6 +65,9 @@ export const handleTCUpdatesConnection = (ws: WebSocket) => {
 };
 
 const fetchData = async () => {
+    if(config.thermocontrol_mock)
+        return thermocontrolMockData;
+
     try {
         const response = await axios.get<ThermocontrolDataType>(
             `${config.thermocontrol_url}/json`

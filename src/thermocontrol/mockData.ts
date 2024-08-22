@@ -1,0 +1,1 @@
+export const thermocontrolMockData = {"current_heating_mode":"heating","data_age_humidity":8,"data_age_temperature":8,"emergency_heating_is_active":false,"extra_ventilation":0,"max_heating_power":0,"target_humidity":77,"target_temperature":22,"use_ventilation_for_cooling":true,"use_ventilation_for_heating":true};
