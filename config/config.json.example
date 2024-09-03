@@ -1,6 +1,7 @@
 {
     "port": 8443,
     "token_expiry_seconds" : 3600,
+    "jwt_secret" : "replace_with_random_secret",
     "thermocontrol_mock" : true,
     "thermocontrol_polling_rate": 300,
     "thermocontrol_url": "http://1.2.3.4:9079",

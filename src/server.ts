@@ -5,13 +5,11 @@ import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
-import cookie from 'cookie';
 import WebSocket, { WebSocketServer } from 'ws';
 import { handleTCUpdatesConnection } from './thermocontrol/thermocontrolUpdates';
 import { handleTCSetConnection } from './thermocontrol/thermocontrolSet';
-import { handleKalUpdatesConnection } from './kaleidoscope/kaleidoscopeUpdates';
-import { handleKaleidoscopeSetConnection } from './kaleidoscope/kaleidoscopeSet';
 import { config } from './config';
+import { handleKaleidoscopeConnection } from './kaleidoscope/handleKaleidoscope';
 
 const TOKEN_EXPIRATION_SECONDS = config.token_expiry_seconds;
 
@@ -36,8 +34,7 @@ const users: Array<{ username: string, password: string }> = [
   }
 ];
 
-// JWT secret key
-const JWT_SECRET = 'supergeheim';
+const JWT_SECRET = config.jwt_secret;
 
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
@@ -50,23 +47,16 @@ app.post('/login', async (req: Request, res: Response) => {
     const token = jwt.sign({ username: user.username, exp: expirationTime }, JWT_SECRET);
     const privileged = username === "admin"
 
-    // Set JWT as HttpOnly Cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: TOKEN_EXPIRATION_SECONDS * 1000,
-    });
 
-    res.json({ username, privileged, tokenExpiration: expirationTime });
+    res.json({token, username, privileged, tokenExpiration: expirationTime });
   } else {
     res.status(401).send('Invalid credentials');
   }
 });
 
 app.post('/refresh-token', (req: Request, res: Response) => {
-  const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : {};
-  const token = cookies['token'];
+  const url = new URL(req.url as string, `http://${req.headers.host}`);
+  const token = url.searchParams.get('token');
 
   console.log(`Incoming request to refresh token`);
 
@@ -83,72 +73,38 @@ app.post('/refresh-token', (req: Request, res: Response) => {
 
     const payload = decoded as JwtPayload;
 
-    // Token ist gültig, stelle ein neues Token aus
+    // Valid, return a fresh one
     const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
     const newToken = jwt.sign({ username: payload.username, exp: expirationTime }, JWT_SECRET);
-    res.cookie('token', newToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: TOKEN_EXPIRATION_SECONDS * 1000,
-    });
 
     console.log(`Token refreshed successfully`);
-    res.json({  tokenExpiration: expirationTime });
+    res.json({ token: token, tokenExpiration: expirationTime });
   });
-});
-
-
-app.post('/logout', (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'strict'
-  });
-  res.json({ message: 'Logout successful' });
 });
 
 
 // WebSocket authentication and routing
 wss.on('connection', (ws: WebSocket, req: Request) => {
   const url = new URL(req.url as string, `http://${req.headers.host}`);
-  const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : {};
-  const token = cookies['token'];
   const path = url.pathname;
   console.log(`Incoming connection to path ` + path);
 
-  if (!token) {
-    ws.close(1008, 'Token not provided');
-    console.log("Rejecting connection because no token provided");
-    return;
-  }
-
-  jwt.verify(token as string, JWT_SECRET, (err, decoded) => {
-    if (err || !decoded) {
-      ws.close(1008, 'Invalid token');
-      return;
-    }
-
-    const payload = decoded as JwtPayload;
-
     // Routing based on path
-    if (path === '/kaleidoscope/updates') {
-      handleKalUpdatesConnection(ws);
-    } else if (path === '/kaleidoscope/set' && payload.username === "admin") {
-      handleKaleidoscopeSetConnection(ws);
+    if (path === '/kaleidoscope') {
+      handleKaleidoscopeConnection(ws);
     } else if (path === '/thermocontrol/updates') {
       handleTCUpdatesConnection(ws);
-    } else if (path === '/thermocontrol/set' && payload.username === "admin") {
+    } else if (path === '/thermocontrol/set') {
       handleTCSetConnection(ws);
     } else {
       ws.close(1008, 'Invalid path');
     }
 
     ws.on('close', () => {
-      console.log(`Connection closed for user: ${payload.username}`);
+      console.log(`Connection closed for path ` + path);
     });
   });
-});
+
 
 // Start the HTTP server
 httpServer.listen(config.port, () => {

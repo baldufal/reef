@@ -2,11 +2,7 @@ import WebSocket from 'ws';
 import { config } from '../config';
 import axios from 'axios';
 import { kaleidoscopeMockData } from './mockData';
-
-interface KalUpdate {
-    health: "good" | "error";
-    data?: any;
-}
+import { KaleidoscopeMessage } from './handleKaleidoscope';
 
 let polling: NodeJS.Timeout | null = null;
 let latestData: any | null = null;
@@ -25,9 +21,9 @@ const startPolling = () => {
             for (const client of kaleidoscopeClients) {
                 if (client.readyState === WebSocket.OPEN) {
                     if (newData) {
-                        client.send(JSON.stringify({ health: "good", data: latestData }));
+                        client.send(JSON.stringify({ messageType: "update", health: "good", data: latestData } as KaleidoscopeMessage));
                     } else {
-                        client.send(JSON.stringify({ health: "error", data: latestData }));
+                        client.send(JSON.stringify({ messageType: "update", health: "error", data: latestData } as KaleidoscopeMessage));
                     }
                 }
             }
@@ -44,27 +40,8 @@ const stopPolling = () => {
     }
 };
 
-export const handleKalUpdatesConnection = (ws: WebSocket) => {
-    console.log('Connected to /kaleidoscope/updates');
-
-    // Add client to the set and start polling if it's the first client
-    kaleidoscopeClients.add(ws);
-    if (kaleidoscopeClients.size === 1) {
-        startPolling();
-    }
-
-    ws.on('close', () => {
-        console.log('Connection closed for /kaleidoscope/updates');
-        kaleidoscopeClients.delete(ws);
-        // Stop polling if there are no more clients
-        if (kaleidoscopeClients.size === 0) {
-            stopPolling();
-        }
-    });
-};
-
 const fetchData = async () => {
-    if(config.kaleidoscope_mock)
+    if (config.kaleidoscope_mock)
         return kaleidoscopeMockData;
     try {
         const response = await axios.get<any>(
@@ -74,5 +51,21 @@ const fetchData = async () => {
     } catch (error) {
         console.log("Error while fetching kaleidoscope data: " + error)
         return null;
+    }
+}
+
+export const registerWsForKaleidoscopeUpdates = (ws: WebSocket) => {
+    // Add client to the set and start polling if it's the first client
+    kaleidoscopeClients.add(ws);
+    if (kaleidoscopeClients.size === 1) {
+        startPolling();
+    }
+}
+
+export const removeWsFromKaleidoscopeUpdates = (ws: WebSocket) => {
+    kaleidoscopeClients.delete(ws);
+    // Stop polling if there are no more clients
+    if (kaleidoscopeClients.size === 0) {
+        stopPolling();
     }
 }

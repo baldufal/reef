@@ -4,6 +4,7 @@ import path from 'path';
 interface Config {
     port: number;
     token_expiry_seconds: number;
+    jwt_secret: string;
     thermocontrol_mock: boolean;
     thermocontrol_polling_rate: number;
     thermocontrol_url: string;
