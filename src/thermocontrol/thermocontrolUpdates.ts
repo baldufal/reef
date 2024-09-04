@@ -45,24 +45,22 @@ const stopPolling = () => {
     }
 };
 
-export const handleTCUpdatesConnection = (ws: WebSocket) => {
-    console.log('Connected to /thermocontrol/updates');
-
-    // Add client to the set and start polling if it's the first client
+export const registerWsForThermocontrolUpdates = (ws: WebSocket) => {
+        // Add client to the set and start polling if it's the first client
     thermocontrolClients.add(ws);
     if (thermocontrolClients.size === 1) {
         startPolling();
     }
+}
 
-    ws.on('close', () => {
-        console.log('Connection closed for /thermocontrol/updates');
-        thermocontrolClients.delete(ws);
+export const removeWsFromThermocontrolUpdates = (ws: WebSocket) => {
+    thermocontrolClients.delete(ws);
         // Stop polling if there are no more clients
         if (thermocontrolClients.size === 0) {
             stopPolling();
         }
-    });
-};
+}
+
 
 const fetchData = async () => {
     if(config.thermocontrol_mock)

@@ -6,10 +6,9 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
 import WebSocket, { WebSocketServer } from 'ws';
-import { handleTCUpdatesConnection } from './thermocontrol/thermocontrolUpdates';
-import { handleTCSetConnection } from './thermocontrol/thermocontrolSet';
 import { config } from './config';
 import { handleKaleidoscopeConnection } from './kaleidoscope/handleKaleidoscope';
+import { handleThermocontrolConnection } from './thermocontrol/handleThermocontrol';
 
 const TOKEN_EXPIRATION_SECONDS = config.token_expiry_seconds;
 
@@ -78,7 +77,7 @@ app.post('/refresh-token', (req: Request, res: Response) => {
     const newToken = jwt.sign({ username: payload.username, exp: expirationTime }, JWT_SECRET);
 
     console.log(`Token refreshed successfully`);
-    res.json({ token: token, tokenExpiration: expirationTime });
+    res.json({ token: newToken, tokenExpiration: expirationTime });
   });
 });
 
@@ -92,10 +91,8 @@ wss.on('connection', (ws: WebSocket, req: Request) => {
     // Routing based on path
     if (path === '/kaleidoscope') {
       handleKaleidoscopeConnection(ws);
-    } else if (path === '/thermocontrol/updates') {
-      handleTCUpdatesConnection(ws);
-    } else if (path === '/thermocontrol/set') {
-      handleTCSetConnection(ws);
+    } else if (path === '/thermocontrol') {
+      handleThermocontrolConnection(ws);
     } else {
       ws.close(1008, 'Invalid path');
     }
