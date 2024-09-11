@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { setContinuousParameter, setDiscreteParameter, setProgram } from './kaleidoscopeREST';
 import { config } from '../config';
-import { JwtPayload } from 'jsonwebtoken';
-import jwt from 'jsonwebtoken';
 import { KaleidoscopeMessage } from './handleKaleidoscope';
 import WebSocket from 'ws';
+import { checkPermission } from '../common/checkToken';
+import { Permission } from '../server';
 
 
 const KSetSchema = z.object({
@@ -30,26 +30,7 @@ const KSetContinuousSchema = z.object({
     value: z.number(),
 });
 
-const validateToken = (token: string, callback: (result: string) => void) => {
-    jwt.verify(token, config.jwt_secret, (err, decoded) => {
-        if (err) {
-            console.log(`Token not valid or expired`);
-            callback('Token not valid for setting kaleidoscope data');
-        } else {
-            try {
-                const payload = decoded as JwtPayload;
-                if (payload.username === "admin") {
-                    callback("Valid");
-                } else {
-                    callback('Token not valid for setting kaleidoscope data');
-                }
-            } catch {
-                console.log(`Invalid user`);
-                callback('Token not valid for setting kaleidoscope data');
-            }
-        }
-    });
-};
+
 
 export const handleKaleidoscopeSetMessage = (message: string, ws: WebSocket) => {
     console.log(`Received message on /kaleidoscope/set: ${message}`);
@@ -70,9 +51,9 @@ export const handleKaleidoscopeSetMessage = (message: string, ws: WebSocket) => 
 
 
 
-    validateToken(token, (result) => {
-        if (result != "Valid")
-            ws.send(JSON.stringify({ messageType: "error", error: result } as KaleidoscopeMessage))
+    checkPermission(token, Permission.LIGHT, (permission, error) => {
+        if (!permission)
+            ws.send(JSON.stringify({ messageType: "error", error: error } as KaleidoscopeMessage))
         else {
 
             let nestedSchema;

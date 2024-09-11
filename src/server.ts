@@ -14,7 +14,7 @@ const TOKEN_EXPIRATION_SECONDS = config.token_expiry_seconds;
 
 interface JwtPayload {
   username: string;
-  role: string;
+  exp: number;
 }
 
 const app = express();
@@ -22,14 +22,27 @@ app.use(bodyParser.json());
 app.use(cors());
 app.use(cookieParser());
 
-const users: Array<{ username: string, password: string }> = [
+export enum Permission {
+  LIGHT = 'LIGHT',
+  HEATING = 'HEATING',
+}
+
+type User = {
+  username: string;
+  password: string;
+  permissions: Permission[];
+}
+
+export const users: Array<User> = [
   {
     username: 'guest',
-    password: bcrypt.hashSync('')
+    password: bcrypt.hashSync(''),
+    permissions: [Permission.LIGHT]
   },
   {
     username: 'admin',
-    password: bcrypt.hashSync('admin')
+    password: bcrypt.hashSync('admin'),
+    permissions: [Permission.LIGHT, Permission.HEATING]
   }
 ];
 
@@ -43,11 +56,9 @@ app.post('/login', async (req: Request, res: Response) => {
   const user = users.find(u => u.username === username);
   if (user && await bcrypt.compare(password, user.password)) {
     const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
-    const token = jwt.sign({ username: user.username, exp: expirationTime }, JWT_SECRET);
-    const privileged = username === "admin"
+    const token = jwt.sign({ username: user.username, exp: expirationTime } as JwtPayload, JWT_SECRET);
 
-
-    res.json({token, username, privileged, tokenExpiration: expirationTime });
+    res.json({ token, username, tokenExpiration: expirationTime, permissions: user.permissions });
   } else {
     res.status(401).send('Invalid credentials');
   }
@@ -71,16 +82,21 @@ app.post('/refresh-token', (req: Request, res: Response) => {
     }
 
     const payload = decoded as JwtPayload;
+    const user = users.find(u => u.username === payload.username);
+
+    if (!user) {
+      res.status(401).send('Unknown user');
+      return;
+    }
 
     // Valid, return a fresh one
     const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
-    const newToken = jwt.sign({ username: payload.username, exp: expirationTime }, JWT_SECRET);
+    const newToken = jwt.sign({ username: payload.username, exp: expirationTime } as JwtPayload, JWT_SECRET);
 
     console.log(`Token refreshed successfully`);
-    res.json({ token: newToken, tokenExpiration: expirationTime });
+    res.json({ token: newToken, tokenExpiration: expirationTime, permissions: user.permissions });
   });
 });
-
 
 // WebSocket authentication and routing
 wss.on('connection', (ws: WebSocket, req: Request) => {
@@ -88,19 +104,19 @@ wss.on('connection', (ws: WebSocket, req: Request) => {
   const path = url.pathname;
   console.log(`Incoming connection to path ` + path);
 
-    // Routing based on path
-    if (path === '/kaleidoscope') {
-      handleKaleidoscopeConnection(ws);
-    } else if (path === '/thermocontrol') {
-      handleThermocontrolConnection(ws);
-    } else {
-      ws.close(1008, 'Invalid path');
-    }
+  // Routing based on path
+  if (path === '/kaleidoscope') {
+    handleKaleidoscopeConnection(ws);
+  } else if (path === '/thermocontrol') {
+    handleThermocontrolConnection(ws);
+  } else {
+    ws.close(1008, 'Invalid path');
+  }
 
-    ws.on('close', () => {
-      console.log(`Connection closed for path ` + path);
-    });
+  ws.on('close', () => {
+    console.log(`Connection closed for path ` + path);
   });
+});
 
 
 // Start the HTTP server
