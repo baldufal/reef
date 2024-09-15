@@ -9,28 +9,41 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { config } from './config';
 import { handleKaleidoscopeConnection } from './kaleidoscope/handleKaleidoscope';
 import { handleThermocontrolConnection } from './thermocontrol/handleThermocontrol';
-
-const TOKEN_EXPIRATION_SECONDS = config.token_expiry_seconds;
-
-interface JwtPayload {
-  username: string;
-  exp: number;
-}
+import { checkToken } from './checkToken';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 app.use(cookieParser());
 
+type JwtPayload = {
+  username: string;
+  exp: number;
+}
+
 export enum Permission {
   LIGHT = 'LIGHT',
   HEATING = 'HEATING',
 }
 
-type User = {
+export type User = {
   username: string;
   password: string;
   permissions: Permission[];
+}
+
+type UserConfig = {
+  dashboard: string[];
+}
+
+type UserResponse = {
+  token: string;
+  username: string;
+  tokenExpiration: number;
+  permissions: Permission[];
+  userConfig: UserConfig;
 }
 
 export const users: Array<User> = [
@@ -47,56 +60,113 @@ export const users: Array<User> = [
 ];
 
 const JWT_SECRET = config.jwt_secret;
+const TOKEN_EXPIRATION_SECONDS = config.token_expiry_seconds;
+
+// Path to store user configurations
+const USER_CONFIG_DIR = path.join(__dirname, 'userconfig');
+const DEFAULT_CONFIG: UserConfig = { dashboard: [] };
 
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
+
+const getUserConfig = async (user: User): Promise<UserConfig> => {
+  const configPath = path.join(USER_CONFIG_DIR, `${user.username}.json`);
+
+  return new Promise((resolve, reject) => {
+    fs.readFile(configPath, 'utf-8', (err, data) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          // Config file not found, create one with default structure
+          fs.writeFile(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8', (writeErr) => {
+            if (writeErr) {
+              reject('Error creating default configuration');
+            }
+            resolve(DEFAULT_CONFIG);
+          })
+        }
+        resolve(DEFAULT_CONFIG);
+      }
+      try {
+        const parsedData = JSON.parse(data);
+        resolve(parsedData);
+
+      } catch (err) {
+        resolve(DEFAULT_CONFIG);
+      }
+    });
+  })
+}
+
+const createUserResponse = async (user: User): Promise<UserResponse> => {
+  const createToken = (username: string): { token: string, expirationTime: number } => {
+    const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
+    const token = jwt.sign({ username: username, exp: expirationTime } as JwtPayload, JWT_SECRET);
+    return { token: token, expirationTime: expirationTime };
+  }
+
+  const { token, expirationTime } = createToken(user.username);
+  const userConfig = await getUserConfig(user);
+
+  return { token, username: user.username, tokenExpiration: expirationTime, permissions: user.permissions, userConfig }
+}
 
 app.post('/login', async (req: Request, res: Response) => {
   const { username, password } = req.body;
   const user = users.find(u => u.username === username);
   if (user && await bcrypt.compare(password, user.password)) {
-    const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
-    const token = jwt.sign({ username: user.username, exp: expirationTime } as JwtPayload, JWT_SECRET);
-
-    res.json({ token, username, tokenExpiration: expirationTime, permissions: user.permissions });
+    res.json(await createUserResponse(user));
   } else {
     res.status(401).send('Invalid credentials');
   }
 });
 
-app.post('/refresh-token', (req: Request, res: Response) => {
-  const url = new URL(req.url as string, `http://${req.headers.host}`);
-  const token = url.searchParams.get('token');
 
+app.post('/refresh-token', async (req: Request, res: Response) => {
   console.log(`Incoming request to refresh token`);
 
-  if (!token) {
-    console.log(`Token not refreshed because: No token provided`);
-    return res.status(401).json({ message: 'No token provided' });
+  const { user, error } = await checkToken(req, JWT_SECRET, users)
+
+  if (!user) {
+    return res.status(401).json({ message: error });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      console.log(`Token not refreshed because: Token invalid`);
-      return res.status(401).json({ message: 'Token expired or invalid' });
-    }
-
-    const payload = decoded as JwtPayload;
-    const user = users.find(u => u.username === payload.username);
-
-    if (!user) {
-      res.status(401).send('Unknown user');
-      return;
-    }
-
-    // Valid, return a fresh one
-    const expirationTime = Math.floor(Date.now() / 1000) + TOKEN_EXPIRATION_SECONDS;
-    const newToken = jwt.sign({ username: payload.username, exp: expirationTime } as JwtPayload, JWT_SECRET);
-
-    console.log(`Token refreshed successfully`);
-    res.json({ token: newToken, tokenExpiration: expirationTime, permissions: user.permissions });
-  });
+  // Valid, return a fresh one
+  res.json(await createUserResponse(user));
+  console.log(`Token refreshed successfully`);
 });
+
+app.post('/userconfig', async (req: Request, res: Response) => {
+  try {
+    const { user, error } = await checkToken(req, JWT_SECRET, users);
+    if (!user) {
+      return res.status(401).json({ message: error });
+    }
+
+    const configPath = path.join(USER_CONFIG_DIR, `${user.username}.json`);
+    const newConfig = req.body;
+
+    if (!newConfig || !newConfig.dashboard || !Array.isArray(newConfig.dashboard)) {
+      return res.status(400).json({ message: 'Invalid configuration format. "dashboard" should be an array.' });
+    }
+
+    if (!fs.existsSync(USER_CONFIG_DIR)) {
+      try {
+        fs.mkdirSync(USER_CONFIG_DIR, { recursive: true });
+      } catch (err) {
+        console.error(`Error creating directory: ${err}`);
+        return res.status(500).json({ message: 'Error creating configuration directory' });
+      }
+    }
+
+    fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');
+    
+    return res.json({ message: 'Configuration saved successfully' });
+  } catch (err) {
+    console.error(`Error saving configuration: ${err}`);
+    return res.status(500).json({ message: 'Error saving configuration' });
+  }
+});
+
 
 // WebSocket authentication and routing
 wss.on('connection', (ws: WebSocket, req: Request) => {
