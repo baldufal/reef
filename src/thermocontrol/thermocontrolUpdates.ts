@@ -3,13 +3,21 @@ import { ThermocontrolDataType } from './thermocontrolREST';
 import { config } from '../config';
 import axios from 'axios';
 import { thermocontrolMockData } from './mockData';
+import { startPolling_aux, stopPolling_aux } from './thermocontrolUpdates_aux';
 
-interface TCUpdates {
-    health: "good" | "error";
+type ThermocontrolAuxData = {
+    [key: string]: number | boolean | string;
+  };
+
+export type TCUpdates = {
+    type: "tc" | "tc_aux";
+    stale: boolean;
     data?: ThermocontrolDataType;
+    data_aux?: ThermocontrolAuxData;
 }
 
 let polling: NodeJS.Timeout | null = null;
+let polling_aux: NodeJS.Timeout | null = null;
 let latestData: ThermocontrolDataType | null = null;
 const thermocontrolClients: Set<WebSocket> = new Set();
 
@@ -26,9 +34,9 @@ const startPolling = () => {
             for (const client of thermocontrolClients) {
                 if (client.readyState === WebSocket.OPEN) {
                     if (newData) {
-                        client.send(JSON.stringify({ health: "good", data: latestData }));
+                        client.send(JSON.stringify({ type: "tc", stale: false, data: latestData } as TCUpdates));
                     } else {
-                        client.send(JSON.stringify({ health: "error", data: latestData }));
+                        client.send(JSON.stringify({ type: "tc", stale: true, data: latestData } as TCUpdates));
                     }
                 }
             }
@@ -46,24 +54,26 @@ const stopPolling = () => {
 };
 
 export const registerWsForThermocontrolUpdates = (ws: WebSocket) => {
-        // Add client to the set and start polling if it's the first client
+    // Add client to the set and start polling if it's the first client
     thermocontrolClients.add(ws);
     if (thermocontrolClients.size === 1) {
         startPolling();
+        startPolling_aux(thermocontrolClients);
     }
 }
 
 export const removeWsFromThermocontrolUpdates = (ws: WebSocket) => {
     thermocontrolClients.delete(ws);
-        // Stop polling if there are no more clients
-        if (thermocontrolClients.size === 0) {
-            stopPolling();
-        }
+    // Stop polling if there are no more clients
+    if (thermocontrolClients.size === 0) {
+        stopPolling();
+        stopPolling_aux();
+    }
 }
 
 
 const fetchData = async () => {
-    if(config.thermocontrol_mock)
+    if (config.thermocontrol_mock)
         return thermocontrolMockData;
 
     try {
