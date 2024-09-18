@@ -1,19 +1,19 @@
 {
-    "port": 8443,
+  "port": 8443,
 
-    "token_expiry_seconds" : 3600,
-    "jwt_secret" : "replace_with_random_secret",
+  "token_expiry_seconds": 3600,
+  "jwt_secret": "PLACE SECRET HERE",
 
-    "thermocontrol_mock" : true,
-    "thermocontrol_polling_rate": 300,
-    "thermocontrol_url": "http://1.2.3.4:9079",
-    "thermocontrol_key" : "password",
+  "thermocontrol_mock": true,
+  "thermocontrol_polling_rate": 300,
+  "thermocontrol_url": "http://10.0.2.2:9079",
+  "thermocontrol_key": "1234",
 
-    "thermocontrol_aux_mock": true,
-    "thermocontrol_aux_polling_rate": 2000,
-    "thermocontrol_aux_url": "http://1.2.3.4:9080",
+  "thermocontrol_aux_mock": true,
+  "thermocontrol_aux_polling_rate": 1000,
+  "thermocontrol_aux_url": "http://10.0.2.2:9080",
 
-    "kaleidoscope_mock": true,
-    "kaleidoscope_polling_rate": 300,
-    "kaleidoscope_url": "http://1.2.3.4:3545"
-  }
+  "kaleidoscope_mock": true,
+  "kaleidoscope_polling_rate": 300,
+  "kaleidoscope_url": "http://10.0.2.2:3545"
+}
