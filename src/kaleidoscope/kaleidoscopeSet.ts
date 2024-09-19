@@ -5,6 +5,8 @@ import { KaleidoscopeMessage } from './handleKaleidoscope';
 import WebSocket from 'ws';
 import { checkPermission } from '../common/checkToken';
 import { Permission } from '../server';
+import { changeMockData } from './kaleidoscopeUpdates';
+import { Console } from 'console';
 
 
 const KSetSchema = z.object({
@@ -78,13 +80,20 @@ export const handleKaleidoscopeSetMessage = (message: string, ws: WebSocket) => 
                 return;
             }
 
-            if (config.kaleidoscope_mock)
+            if (config.kaleidoscope_mock && action != "program") {
+                console.log("Ignoring kaleidoscope request because we are in mock mode")
                 return;
+            }
+
 
             switch (action) {
                 case "program":
                     {
                         const { programName } = nestedValidation.data as z.infer<typeof KSetProgramSchema>;
+                        if (config.kaleidoscope_mock) {
+                            changeMockData(programName);
+                            return;
+                        }
                         setProgram(fixture, programName)
                         return;
                     }

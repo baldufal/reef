@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import { config } from '../config';
 import axios from 'axios';
-import { kaleidoscopeMockData } from './mockData';
+import { kaleidoscopeMockData_manual, kaleidoscopeMockData_off, kaleidoscopeMockData_on } from './mockData';
 import { KaleidoscopeMessage } from './handleKaleidoscope';
 
 let polling: NodeJS.Timeout | null = null;
@@ -40,9 +40,20 @@ const stopPolling = () => {
     }
 };
 
+let mockData = kaleidoscopeMockData_off;
+
+export const changeMockData = (changeTo: string) => {
+    console.log("Changing mock data");
+    switch (changeTo.toLocaleLowerCase()) {
+        case 'on': mockData = kaleidoscopeMockData_on; break;
+        case 'off': mockData = kaleidoscopeMockData_off; break;
+        default: mockData = kaleidoscopeMockData_manual; break;
+    }
+}
+
 const fetchData = async () => {
     if (config.kaleidoscope_mock)
-        return kaleidoscopeMockData;
+        return mockData;
     try {
         const response = await axios.get<any>(
             `${config.kaleidoscope_url}/api/v1/fixtures`
