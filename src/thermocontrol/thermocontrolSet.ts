@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { config } from '../config';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { ThermocontroleMessage as ThermocontrolMessage } from './handleThermocontrol';
+import { changeThermocontrolMockData } from './mockData';
+import { fetch_and_distribute } from './thermocontrolUpdates';
 
 const TCMessage = z.object({
     token: z.string(),
@@ -41,7 +43,7 @@ const validateToken = (token: string, callback: (result: string) => void) => {
 };
 
 export const handleThermocontrolSetMessage = async (message: string, ws: WebSocket) => {
-    console.log(`Received message on /thermocontrol: ${message}`);
+    console.log(`Received message on /thermocontrol: ${message.slice(164)}`);
 
     try {
         const messageJSON = JSON.parse(message);
@@ -60,19 +62,23 @@ export const handleThermocontrolSetMessage = async (message: string, ws: WebSock
             ws.send(JSON.stringify({ messageType: "error", error: "Invalid message format: " + messageParseResult.error } as ThermocontrolMessage))
         }
 
-        if (config.thermocontrol_mock)
-            return;
 
         validateToken(token, async (validationResult) => {
             if (validationResult != "Valid")
                 ws.send(JSON.stringify({ messageType: "error", error: validationResult } as ThermocontrolMessage))
             else {
+                // All checks passed
 
-                try {
-                    await sendData(messageParseResult.data as ThermocontrolSettableDataType);
-                } catch (error) {
-                    console.error('Error sending data:', error);
-                    ws.send(JSON.stringify({ messageType: "error", error: "Could not send data to HPCTL." } as ThermocontrolMessage))
+                if (config.thermocontrol_mock){
+                    changeThermocontrolMockData(messageParseResult.data as ThermocontrolSettableDataType);
+                }else{
+                    try {
+                        await sendData(messageParseResult.data as ThermocontrolSettableDataType);
+                        fetch_and_distribute(); // Trigger an additional thermocontrol update
+                    } catch (error) {
+                        console.error('Error sending data:', error);
+                        ws.send(JSON.stringify({ messageType: "error", error: "Could not send data from backend to thermocontrol." } as ThermocontrolMessage))
+                    }
                 }
             }
         });

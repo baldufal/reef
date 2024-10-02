@@ -8,28 +8,33 @@ import { TCUpdates } from './thermocontrolUpdates';
 let polling_aux: NodeJS.Timeout | null = null;
 let latestData_aux: any = null;
 
+const fetch_and_distribute_aux = async (thermocontrolClients : Set<WebSocket>) => {
+    try {
+        const newData = await fetchData_aux();
+        if (newData) {
+            latestData_aux = await fetchData_aux();
+        }
+        for (const client of thermocontrolClients) {
+            if (client.readyState === WebSocket.OPEN) {
+                if (newData) {
+                    client.send(JSON.stringify({ type: "tc_aux", stale: false, data_aux: latestData_aux } as TCUpdates));
+                } else {
+                    client.send(JSON.stringify({ type: "tc_aux", stale: true, data_aux: latestData_aux } as TCUpdates));
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Polling error:', error);
+    }
+}
+
 export const startPolling_aux = (thermocontrolClients : Set<WebSocket>) => {
     if (polling_aux) return; // Polling already started
 
+    fetch_and_distribute_aux(thermocontrolClients);
     polling_aux = setInterval(async () => {
-        try {
-            const newData = await fetchData_aux();
-            if (newData) {
-                latestData_aux = await fetchData_aux();
-            }
-            // Broadcast the latest data to all connected /thermocontrol clients
-            for (const client of thermocontrolClients) {
-                if (client.readyState === WebSocket.OPEN) {
-                    if (newData) {
-                        client.send(JSON.stringify({ type: "tc_aux", stale: false, data_aux: latestData_aux } as TCUpdates));
-                    } else {
-                        client.send(JSON.stringify({ type: "tc_aux", stale: true, data_aux: latestData_aux } as TCUpdates));
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-        }
+        fetch_and_distribute_aux(thermocontrolClients);
+        
     }, config.thermocontrol_aux_polling_rate);
 };
 

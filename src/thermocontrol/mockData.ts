@@ -1,4 +1,6 @@
-export const thermocontrolMockData = {
+import { ThermocontrolSettableDataType } from "./thermocontrolREST";
+
+const initialThermocontrolMockData = {
     "current_heating_mode": "heating",
     "data_age_humidity": 8,
     "data_age_temperature": 8,
@@ -10,6 +12,13 @@ export const thermocontrolMockData = {
     "use_ventilation_for_cooling": true,
     "use_ventilation_for_heating": true
 };
+
+export let thermocontrolMockData = initialThermocontrolMockData;
+
+export const changeThermocontrolMockData = (changeTo: ThermocontrolSettableDataType) => {
+    const newData = { ...thermocontrolMockData, ...changeTo };
+    thermocontrolMockData = newData;
+}
 
 export const thermocontrolAuxMockData = {
     "dewpoint_inside": 12.956453194516229,

@@ -1,67 +1,62 @@
 import WebSocket from 'ws';
 import { config } from '../config';
 import axios from 'axios';
-import { kaleidoscopeMockData_manual, kaleidoscopeMockData_off, kaleidoscopeMockData_on } from './mockData';
 import { KaleidoscopeMessage } from './handleKaleidoscope';
+import { FixturesData } from './kaleidoscopeTypes';
+import { kaleidoscopeMockData } from './mockData';
 
-let polling: NodeJS.Timeout | null = null;
-let latestData: any | null = null;
+let polling: NodeJS.Timeout | undefined = undefined;
+let latestData: FixturesData | undefined = undefined;
 const kaleidoscopeClients: Set<WebSocket> = new Set();
+
+export const fetch_and_distribute = async () => {
+    try {
+        const newData = await fetchData();
+        if (newData) {
+            latestData = newData;
+        }
+        // Broadcast the latest data to all connected /kaleidoscope clients
+        for (const client of kaleidoscopeClients) {
+            if (client.readyState === WebSocket.OPEN) {
+                if (newData) {
+                    client.send(JSON.stringify({ messageType: "update", health: "good", data: latestData } as KaleidoscopeMessage));
+                } else {
+                    client.send(JSON.stringify({ messageType: "update", health: "error", data: latestData } as KaleidoscopeMessage));
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Polling error:', error);
+    }
+}
 
 const startPolling = () => {
     if (polling) return; // Polling already started
 
+    fetch_and_distribute();
     polling = setInterval(async () => {
-        try {
-            const newData = await fetchData();
-            if (newData) {
-                latestData = await fetchData();
-            }
-            // Broadcast the latest data to all connected /kaleidoscope clients
-            for (const client of kaleidoscopeClients) {
-                if (client.readyState === WebSocket.OPEN) {
-                    if (newData) {
-                        client.send(JSON.stringify({ messageType: "update", health: "good", data: latestData } as KaleidoscopeMessage));
-                    } else {
-                        client.send(JSON.stringify({ messageType: "update", health: "error", data: latestData } as KaleidoscopeMessage));
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-        }
+        fetch_and_distribute();
     }, config.kaleidoscope_polling_rate);
 };
 
 const stopPolling = () => {
     if (polling) {
         clearInterval(polling);
-        polling = null;
+        polling = undefined;
     }
 };
 
-let mockData = kaleidoscopeMockData_off;
-
-export const changeMockData = (changeTo: string) => {
-    console.log("Changing mock data");
-    switch (changeTo.toLocaleLowerCase()) {
-        case 'on': mockData = kaleidoscopeMockData_on; break;
-        case 'off': mockData = kaleidoscopeMockData_off; break;
-        default: mockData = kaleidoscopeMockData_manual; break;
-    }
-}
-
 const fetchData = async () => {
     if (config.kaleidoscope_mock)
-        return mockData;
+        return kaleidoscopeMockData as FixturesData;
     try {
         const response = await axios.get<any>(
             `${config.kaleidoscope_url}/api/v1/fixtures`
         );
-        return response.data;
+        return response.data as FixturesData;
     } catch (error) {
         console.log("Error while fetching kaleidoscope data: " + error)
-        return null;
+        return undefined;
     }
 }
 

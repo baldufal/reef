@@ -5,8 +5,9 @@ import { KaleidoscopeMessage } from './handleKaleidoscope';
 import WebSocket from 'ws';
 import { checkPermission } from '../common/checkToken';
 import { Permission } from '../server';
-import { changeMockData } from './kaleidoscopeUpdates';
+import { fetch_and_distribute } from './kaleidoscopeUpdates';
 import { Console } from 'console';
+import { setContinuousParameter_mock, setDiscreteParameter_mock, setProgram_mock } from './mockData';
 
 
 const KSetSchema = z.object({
@@ -35,7 +36,7 @@ const KSetContinuousSchema = z.object({
 
 
 export const handleKaleidoscopeSetMessage = (message: string, ws: WebSocket) => {
-    console.log(`Received message on /kaleidoscope/set: ${message}`);
+    console.log(`Received message on /kaleidoscope/set: ${message.slice(164)}`);
 
     let messageJSON;
     try {
@@ -80,36 +81,39 @@ export const handleKaleidoscopeSetMessage = (message: string, ws: WebSocket) => 
                 return;
             }
 
-            if (config.kaleidoscope_mock && action != "program") {
-                console.log("Ignoring kaleidoscope request because we are in mock mode")
-                return;
-            }
-
-
             switch (action) {
                 case "program":
                     {
                         const { programName } = nestedValidation.data as z.infer<typeof KSetProgramSchema>;
                         if (config.kaleidoscope_mock) {
-                            changeMockData(programName);
-                            return;
+                            setProgram_mock(fixture, programName);
+                        } else {
+                            setProgram(fixture, programName);
                         }
-                        setProgram(fixture, programName)
-                        return;
+                        break;
                     }
                 case "discrete":
                     {
                         const { programName, parameterName, value } = nestedValidation.data as z.infer<typeof KSetDiscreteSchema>;
-                        setDiscreteParameter(fixture, programName, parameterName, value);
-                        return;
+                        if (config.kaleidoscope_mock) {
+                            setDiscreteParameter_mock(fixture, programName, parameterName, value);
+                        } else {
+                            setDiscreteParameter(fixture, programName, parameterName, value);
+                        }
+                        break;
                     }
                 case "continuous":
                     {
                         const { programName, parameterName, value } = nestedValidation.data as z.infer<typeof KSetContinuousSchema>;
-                        setContinuousParameter(fixture, programName, parameterName, value);
-                        return;
+                        if (config.kaleidoscope_mock) {
+                            setContinuousParameter_mock(fixture, programName, parameterName, value);
+                        } else {
+                            setContinuousParameter(fixture, programName, parameterName, value);
+                        }
+                        break;
                     }
             }
+            fetch_and_distribute();
         }
     });
 };
