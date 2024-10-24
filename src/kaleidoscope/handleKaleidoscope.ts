@@ -3,7 +3,9 @@ import { registerWsForKaleidoscopeUpdates, removeWsFromKaleidoscopeUpdates } fro
 import { handleKaleidoscopeSetMessage } from './kaleidoscopeSet';
 
 export interface KaleidoscopeMessage {
-    messageType: "update" | "error";
+    // tokenError hints at an expired or invalid token and should be handled by the UI by logging out the user
+    messageType: "update" | "error" | "tokenError";
+    // should be set if message type is error or tokenError. It is a human-readable error message
     error?: string;
     health?: "good" | "error";
     data?: any;

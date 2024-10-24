@@ -20,17 +20,23 @@ const extractUsername = (token: string, callback: (username: string | undefined)
     });
 };
 
-export const checkPermission = (token: string, permission: Permission, callback: (allowed: boolean, error: string) => void) => {
+export enum PermissionStatus {
+    OK,
+    INVALID_OR_EXPIRED,
+    NO_PERMISSION
+}
+
+export const checkPermission = (token: string, permission: Permission, callback: (status: PermissionStatus, permissionError: string) => void) => {
     extractUsername(token, (username) => {
         if (!username) {
-            callback(false, "Could not determine username");
+            callback(PermissionStatus.INVALID_OR_EXPIRED, "Could not determine username");
             return;
         }
         const user = users.find(u => u.username === username);
         if (user && user.permissions.find(p => p === permission)) {
-            callback(true, "");
+            callback(PermissionStatus.OK, "");
         } else {
-            callback(false, "User " + username + " does not have the required permission");
+            callback(PermissionStatus.NO_PERMISSION, "User " + username + " does not have the required permission");
         }
     });
 }

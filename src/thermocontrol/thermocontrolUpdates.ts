@@ -1,20 +1,10 @@
 import WebSocket from 'ws';
-import { ThermocontrolDataType, ThermocontrolSettableDataType } from './thermocontrolREST';
+import { ThermocontrolDataType } from './thermocontrolREST';
 import { config } from '../config';
 import axios from 'axios';
 import { thermocontrolMockData } from './mockData';
 import { startPolling_aux, stopPolling_aux } from './thermocontrolUpdates_aux';
-
-type ThermocontrolAuxData = {
-    [key: string]: number | boolean | string;
-};
-
-export type TCUpdates = {
-    type: "tc" | "tc_aux";
-    stale: boolean;
-    data?: ThermocontrolDataType;
-    data_aux?: ThermocontrolAuxData;
-}
+import { TCUpdates, ThermocontrolMessage } from './handleThermocontrol';
 
 let polling: NodeJS.Timeout | null = null;
 let latestData: ThermocontrolDataType | null = null;
@@ -33,9 +23,15 @@ export const fetch_and_distribute = async () => {
         for (const client of thermocontrolClients) {
             if (client.readyState === WebSocket.OPEN) {
                 if (newData) {
-                    client.send(JSON.stringify({ type: "tc", stale: false, data: latestData } as TCUpdates));
+                    client.send(JSON.stringify({
+                        messageType: "update",
+                        data: { type: "tc", stale: false, data: latestData } as TCUpdates
+                    } as ThermocontrolMessage));
                 } else {
-                    client.send(JSON.stringify({ type: "tc", stale: true, data: latestData } as TCUpdates));
+                    client.send(JSON.stringify({
+                        messageType: "update",
+                        data: { type: "tc", stale: true, data: latestData } as TCUpdates
+                    } as ThermocontrolMessage));
                 }
             }
         }
@@ -49,7 +45,7 @@ const startPolling = () => {
 
     polling = setInterval(async () => {
         fetch_and_distribute();
-        
+
     }, config.thermocontrol_polling_rate);
 };
 
