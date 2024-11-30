@@ -1,23 +1,9 @@
 import axios from 'axios';
-import { config } from '../config';
+import { config } from '../../../config';
 import crypto from 'crypto';
+import { TcSettableDataType } from '../../domain/entities/RestMessages';
 
-export interface ThermocontrolSettableDataType {
-    extra_ventilation?: number;
-    max_heating_power?: number;
-    target_humidity?: number;
-    target_temperature?: number;
-    use_ventilation_for_cooling?: boolean;
-    use_ventilation_for_heating?: boolean;
-}
-
-export interface ThermocontrolDataType extends ThermocontrolSettableDataType {
-    emergency_heating_is_active: boolean;
-    data_age_humidity: number;
-    data_age_temperature: number;
-}
-
-export const sendData = async (data: ThermocontrolSettableDataType) => {
+export const sendData = async (data: TcSettableDataType) => {
     try {
         // Fetch nonce
         const nonceResponse = await axios.get(config.thermocontrol_url + "/nonce");
@@ -61,7 +47,7 @@ export const sendData = async (data: ThermocontrolSettableDataType) => {
 };
 
 
-export async function computeHMAC(secret: string, data: string): Promise<string> {
+async function computeHMAC(secret: string, data: string): Promise<string> {
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
         'raw',
