@@ -1,9 +1,9 @@
 import WebSocket from 'ws';
 import { config } from '../config';
 import axios from 'axios';
-import { KaleidoscopeMessage } from './handleKaleidoscope';
-import { FixturesData } from './kaleidoscopeTypes';
-import { kaleidoscopeMockData } from './mockData';
+import { FixturesData } from './domain/RestTypes';
+import { kaleidoscopeMockData } from './infrastructure/mock/mockData';
+import { KaleidoscopeMessage } from './domain/WebSocketMessages';
 
 let polling: NodeJS.Timeout | undefined = undefined;
 let latestData: FixturesData | undefined = undefined;

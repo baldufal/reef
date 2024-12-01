@@ -1,37 +1,12 @@
 import {  z } from 'zod';
 import { setContinuousParameter, setDiscreteParameter, setProgram } from './kaleidoscopeREST';
 import { config } from '../config';
-import { KaleidoscopeMessage } from './handleKaleidoscope';
 import WebSocket from 'ws';
 import { fetch_and_distribute } from './kaleidoscopeUpdates';
-import { setContinuousParameter_mock, setDiscreteParameter_mock, setProgram_mock } from './mockData';
 import { TokenService, PermissionStatus } from '../user_management/infrastructure/services/TokenService';
 import { Permission } from '../user_management/domain/entities/User';
-
-
-const KSetSchema = z.object({
-    token: z.string(),
-    action: z.enum(["program", "discrete", "continuous"]),
-    fixture: z.string(),
-    data: z.any(),
-});
-
-const KSetProgramSchema = z.object({
-    programName: z.string()
-});
-
-const KSetDiscreteSchema = z.object({
-    programName: z.string(),
-    parameterName: z.string(),
-    value: z.string(),
-});
-
-const KSetContinuousSchema = z.object({
-    programName: z.string(),
-    parameterName: z.string(),
-    value: z.number(),
-});
-
+import { setContinuousParameter_mock, setDiscreteParameter_mock, setProgram_mock } from './infrastructure/mock/mockData';
+import { KaleidoscopeMessage, KSetContinuousSchema, KSetDiscreteSchema, KSetProgramSchema, KSetSchema } from './domain/WebSocketMessages';
 
 
 export const handleKaleidoscopeSetMessage = async (message: string, ws: WebSocket) => {
@@ -119,6 +94,4 @@ export const handleKaleidoscopeSetMessage = async (message: string, ws: WebSocke
             }
             fetch_and_distribute();
     }
-
-
 };

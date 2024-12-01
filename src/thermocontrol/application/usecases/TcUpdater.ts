@@ -3,7 +3,6 @@ import WebSocket from "ws";
 import { TcRestService } from "../TcRestService";
 
 export class TcUpdater {
-    private static instance: TcUpdater | null = null;
     private clients: Set<WebSocket> = new Set();
     private pollingInterval: NodeJS.Timeout | null = null;
     private latestData: TcUpdates | null = null;

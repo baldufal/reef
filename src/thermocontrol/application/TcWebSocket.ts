@@ -1,5 +1,5 @@
-import { TcSettableDataType } from "../domain/entities/RestMessages";
 import WebSocket from "ws";
+import { TcSettableDataType } from "../domain/entities/RestMessages";
 import { TcMessage } from "../domain/entities/WebSocketMessages";
 
 
