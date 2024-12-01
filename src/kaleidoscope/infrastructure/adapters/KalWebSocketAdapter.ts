@@ -1,6 +1,7 @@
 import WebSocket from "ws";
 import { KalUpdater } from "../../application/usecases/KalUpdater";
 import { KaleidoscopeSet } from "../../application/usecases/KaleidoscopeSet";
+import { kalLogger } from "../../../logging";
 
 
 export class KalWebSocketAdapter {
@@ -23,7 +24,7 @@ export class KalWebSocketAdapter {
     });
 
     ws.on("error", (err) => {
-      console.error("WebSocket error:", err);
+      kalLogger.error("WebSocket error:", err);
     });
   }
 }

@@ -2,6 +2,7 @@ import WebSocket from "ws";
 
 import { TcUpdater } from "../../application/usecases/TcUpdater";
 import { TcMessageHandler } from "../../application/usecases/TcMessageHandler";
+import { tcLogger } from "../../../logging";
 
 export class WebSocketTcAdapter {
 
@@ -22,7 +23,7 @@ export class WebSocketTcAdapter {
     });
 
     ws.on("error", (err) => {
-      console.error("WebSocket error:", err);
+      tcLogger.error("WebSocket error:", err);
     });
   }
 }

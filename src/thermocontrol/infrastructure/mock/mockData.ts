@@ -1,3 +1,4 @@
+import { tcLogger } from "../../../logging";
 import { TcSettableDataType } from "../../domain/entities/RestMessages";
 
 
@@ -17,6 +18,7 @@ const initialThermocontrolMockData = {
 export let thermocontrolMockData = initialThermocontrolMockData;
 
 export const changeThermocontrolMockData = (changeTo: TcSettableDataType) => {
+    tcLogger.info(`Changing thermocontrolMockData to: ${JSON.stringify(changeTo)}`);
     const newData = { ...thermocontrolMockData, ...changeTo };
     thermocontrolMockData = newData;
 }

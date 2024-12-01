@@ -1,3 +1,4 @@
+import { kalLogger } from "../../../logging";
 import { ContinuousParameter, DiscreteParameter, FixturesData } from "../../domain/RestTypes";
 
 const kaleidoscopeMockData_off = {
@@ -582,6 +583,7 @@ export function setProgram_mock(
     fixtureName: string,
     programName: string
 ) {
+    kalLogger.info(`Setting program in mock data: ${fixtureName} -> ${programName}`);
     kaleidoscopeMockData = {
         ...kaleidoscopeMockData,
         fixtures: {
@@ -601,6 +603,7 @@ export function setDiscreteParameter_mock(
     parameterName: string,
     value: string
 ) {
+    kalLogger.info(`Setting discrete parameter in mock data: ${fixtureName} -> ${programName} -> ${parameterName} -> ${value}`);
     kaleidoscopeMockData = {
         ...kaleidoscopeMockData,
         fixtures: {
@@ -634,6 +637,7 @@ export function setContinuousParameter_mock(
     parameterName: string,
     value: number
 ) {
+    kalLogger.info(`Setting continuous parameter in mock data: ${fixtureName} -> ${programName} -> ${parameterName} -> ${value}`);
     kaleidoscopeMockData = {
         ...kaleidoscopeMockData,
         fixtures: {

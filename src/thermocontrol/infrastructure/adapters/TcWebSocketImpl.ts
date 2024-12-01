@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import { TcWebSocket } from "../../application/TcWebSocket";
 import { TcSettableDataType } from "../../domain/entities/RestMessages";
 import { TcMessage, TCMessage, TCSetSchema } from "../../domain/entities/WebSocketMessages";
+import { tcLogger } from "../../../logging";
 
 export class TcWebSocketImpl implements TcWebSocket {
 
@@ -15,7 +16,6 @@ export class TcWebSocketImpl implements TcWebSocket {
             const messageJSON = JSON.parse(message);
             const firstLevelValidation = TCMessage.safeParse(messageJSON);
             if (!firstLevelValidation.success) {
-                console.error('Invalid message format:', firstLevelValidation.error);
                 return { error: "invalid message format", result: undefined };
             }
 
@@ -23,14 +23,12 @@ export class TcWebSocketImpl implements TcWebSocket {
 
             const messageParseResult = TCSetSchema.safeParse(data);
             if (!messageParseResult.success) {
-                console.error('Invalid message format:', messageParseResult.error);
                 return { error: "Invalid message format", result: undefined };
             }
             return { error: undefined, result:{data: messageParseResult.data as TcSettableDataType, token: token} };
 
 
         } catch (error) {
-            console.error('Error processing WebSocket message:', error);
             return { error: "Error processing WebSocket message", result: undefined };
         }
     }

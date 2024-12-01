@@ -10,12 +10,10 @@ export class KalWebSocketServiceImpl implements KalWebSocketService {
         try {
             messageJSON = JSON.parse(message);
         } catch (error) {
-            console.log('Error parsing message: ' + error)
             return Promise.resolve({ error: 'Error parsing message: ' + error });
         }
         const firstLevelValidation = KSetSchema.safeParse(messageJSON);
         if (!firstLevelValidation.success) {
-            console.error('Invalid message format:', firstLevelValidation.error);
             return Promise.resolve({ error: 'Invalid message format: ' + firstLevelValidation.error });
         }
         const { token, action, fixture, data } = firstLevelValidation.data;
@@ -32,13 +30,11 @@ export class KalWebSocketServiceImpl implements KalWebSocketService {
                 nestedSchema = KSetContinuousSchema;
                 break;
             default:
-                console.error("Unknown message type: " + action);
                 return Promise.resolve({ error: 'Unknown message type: ' + action });
         }
 
         const nestedValidation = nestedSchema.safeParse(data);
         if (!nestedValidation.success) {
-            console.error('Invalid message format:', nestedValidation.error);
             return Promise.resolve({ error: 'Invalid message format: ' + nestedValidation.error });
         }
 

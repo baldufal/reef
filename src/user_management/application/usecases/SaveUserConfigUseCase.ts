@@ -1,6 +1,5 @@
 import { UserConfig } from '../../domain/entities/UserConfig';
 import { UserConfigRepository } from '../../domain/repositories/UserConfigRepository';
-import { User } from '../../domain/entities/User';
 
 export class SaveUserConfigUseCase {
   constructor(private userConfigRepository: UserConfigRepository) {}

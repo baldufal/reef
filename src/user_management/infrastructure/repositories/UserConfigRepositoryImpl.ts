@@ -1,38 +1,57 @@
-import fs from 'fs';
-import path from 'path';
 import { UserConfigRepository } from '../../domain/repositories/UserConfigRepository';
 import { UserConfig } from '../../domain/entities/UserConfig';
+import { connectToDatabase } from '../services/mongodb'; // Import MongoDB connection
+import { userManagementLogger } from '../../../logging';
+import { Collection, Document } from 'mongodb';
 
-const USER_CONFIG_DIR = path.join(__dirname, 'userconfig');
+interface UserConfigDoc extends Document {
+  username: string;
+  dashboard: string[];
+}
 
 export class UserConfigRepositoryImpl implements UserConfigRepository {
+  //private db: Db | undefined;
+  private userConfigCollection: Collection<UserConfigDoc> | undefined;
 
   constructor() {
-    if (!fs.existsSync(USER_CONFIG_DIR)) {
-      fs.mkdirSync(USER_CONFIG_DIR, { recursive: true });
-    }
+    connectToDatabase()
+      .then((db) => {
+        //this.db = db;
+        this.userConfigCollection = db.collection('user_configs');
+        userManagementLogger.info('Connected to MongoDB for user config repository');
+      })
   }
 
   async getConfig(username: string): Promise<UserConfig> {
-    const configPath = path.join(USER_CONFIG_DIR, `${username}.json`);
-    if (!fs.existsSync(configPath)) {
-      return UserConfig.createDefault();
+    if (!this.userConfigCollection) {
+      throw new Error('Database not connected');
     }
 
-    const data = await fs.promises.readFile(configPath, 'utf-8');
-    try {
-      const parsedData = JSON.parse(data);
-      if (UserConfig.validate(parsedData)) {
-        return new UserConfig(parsedData.dashboard);
-      }
-      return UserConfig.createDefault();
-    } catch {
+    const userConfig = await this.userConfigCollection.findOne({ username });
+    if (userConfig) {
+      return new UserConfig(userConfig.dashboard);
+    } else {
+      userManagementLogger.info(`No config found for user ${username}, creating default`);
       return UserConfig.createDefault();
     }
   }
 
   async saveConfig(username: string, config: UserConfig): Promise<void> {
-    const configPath = path.join(USER_CONFIG_DIR, `${username}.json`);
-    await fs.promises.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    if (!this.userConfigCollection) {
+      throw new Error('Database not connected');
+    }
+
+    const existingConfig = await this.userConfigCollection.findOne({ username });
+    if (existingConfig) {
+      await this.userConfigCollection.updateOne(
+        { username },
+        { $set: { dashboard: config.dashboard } }
+      );
+    } else {
+      await this.userConfigCollection.insertOne({
+        username,
+        dashboard: config.dashboard,
+      });
+    }
   }
 }

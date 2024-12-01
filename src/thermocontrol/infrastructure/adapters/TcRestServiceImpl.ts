@@ -3,6 +3,7 @@ import { config } from "../../../config";
 import { thermocontrolAuxMockData, thermocontrolMockData } from "../mock/mockData";
 import { TcDataType, TcSettableDataType } from "../../domain/entities/RestMessages";
 import { TcRestService } from "../../application/TcRestService";
+import { tcLogger } from "../../../logging";
 export class TcRestServiceImpl implements TcRestService {
 
     async fetchDataAux(): Promise<any | null> {
@@ -15,7 +16,7 @@ export class TcRestServiceImpl implements TcRestService {
             );
             return response.data;
         } catch (error) {
-            console.log("Error while fetching thermocontrol aux data: " + error)
+            tcLogger.warn("Error while fetching thermocontrol aux data: " + error)
             return null;
         }
     }
@@ -30,51 +31,31 @@ export class TcRestServiceImpl implements TcRestService {
             );
             return response.data as TcDataType;
         } catch (error) {
-            console.log("Error while fetching thermocontrol data: " + error)
+            tcLogger.warn("Error while fetching thermocontrol data: " + error)
             return null;
         }
     }
 
     async sendData(data: TcSettableDataType): Promise<void> {
         try {
-            // Fetch nonce
             const nonceResponse = await axios.get(config.thermocontrol_url + "/nonce");
             const fetchedNonce = nonceResponse.data.nonce;
 
-            // Build JSON string
             const jsonData = JSON.stringify({ ...data, nonce: fetchedNonce });
 
-            // Compute HMAC
             const hmac = await this.computeHMAC(config.thermocontrol_key, jsonData);
 
-            // Construct the request payload
             const payload = `${hmac}${jsonData}`;
+            const url = config.thermocontrol_url + "/json";
 
-            console.log("Sending payload: " + payload)
-
-            // Send POST request
-            await axios.post(config.thermocontrol_url + "/json", payload, {
+            tcLogger.info("Sending thermocontrol data to: " + url)
+            await axios.post(url, payload, {
                 headers: {
                     'Content-Type': 'text/plain',
                 },
             });
-            console.log("Payload successfully sent");
         } catch (error: any) {
-            console.error("Error occurred while sending data:", error.message || error);
-
-            // Log additional error details if available
-            if (error.response) {
-                console.error("Response data:", error.response.data);
-                console.error("Response status:", error.response.status);
-                console.error("Response headers:", error.response.headers);
-            } else if (error.request) {
-                console.error("Request made but no response received:", error.request);
-            } else {
-                console.error("Error in setting up the request:", error.message);
-            }
-
-            // Optionally, rethrow the error if you need to handle it elsewhere
-            throw error;
+            tcLogger.error("Error occurred while sending data:", error.message || error);
         }
     };
 

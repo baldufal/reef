@@ -12,7 +12,7 @@ export class LoginUseCase {
 
   async execute(username: string, password: string): Promise<UserResponse | null> {
     const user = await this.userRepository.findByUsername(username);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return null; // Invalid credentials
     }
 

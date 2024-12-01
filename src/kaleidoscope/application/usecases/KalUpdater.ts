@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import { FixturesData } from "../../domain/RestTypes";
 import { KaleidoscopeMessage } from "../../domain/WebSocketMessages";
 import { KalRestService } from "../KalRestService";
+import { kalLogger } from "../../../logging";
 
 export class KalUpdater {
     private clients: Set<WebSocket> = new Set();
@@ -48,7 +49,7 @@ export class KalUpdater {
                     }
                 }
         } catch (error) {
-            console.error('Error during kaleidoscope broadcast:', error);
+            kalLogger.error('Error during kaleidoscope broadcast:', error);
         }
     }
 

@@ -4,8 +4,14 @@ import path from 'path';
 interface Config {
     port: number;
 
+    cli_log_level: string;
+    file_logging: boolean;
+    file_log_level: string;
+
     token_expiry_seconds: number;
     jwt_secret: string;
+
+    admin_password: string;
 
     thermocontrol_mock: boolean;
     thermocontrol_polling_rate: number;

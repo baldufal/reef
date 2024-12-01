@@ -7,6 +7,7 @@ import { changeThermocontrolMockData } from "../../infrastructure/mock/mockData"
 import { TcWebSocket } from "../TcWebSocket";
 import { TcUpdater } from "./TcUpdater";
 import { TcRestService } from "../TcRestService";
+import { tcLogger } from "../../../logging";
 
 export class TcMessageHandler {
 
@@ -18,6 +19,7 @@ export class TcMessageHandler {
     async handleMessage(ws: WebSocket, message: string): Promise<void> {
         const { error, result } = await this.tcWebSocket.parseMessage(message);
         if (error) {
+            tcLogger.error("Error parsing message:", error);
             this.tcWebSocket.sendMessage(ws, { messageType: "error", error: error } as TcMessage);
         }
         const data = result!.data;
@@ -37,13 +39,8 @@ export class TcMessageHandler {
                     changeThermocontrolMockData(data);
                     break;
                 }
-                try {
-                    await this.tcRestService.sendData(data);
-                    this.tcUpdater.fetchAndBroadcast(); // Trigger an additional thermocontrol update
-                } catch (error) {
-                    console.error('Error sending data:', error);
-                    this.tcWebSocket.sendMessage(ws, { messageType: "error", error: "Could not send data from backend to thermocontrol." });
-                }
+                await this.tcRestService.sendData(data);
+                this.tcUpdater.fetchAndBroadcast(); // Trigger an additional thermocontrol update
         }
     }
 }

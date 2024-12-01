@@ -2,6 +2,7 @@ import axios from 'axios';
 import { config } from '../../../config';
 import crypto from 'crypto';
 import { TcSettableDataType } from '../../domain/entities/RestMessages';
+import { tcLogger } from '../../../logging';
 
 export const sendData = async (data: TcSettableDataType) => {
     try {
@@ -18,7 +19,7 @@ export const sendData = async (data: TcSettableDataType) => {
         // Construct the request payload
         const payload = `${hmac}${jsonData}`;
 
-        console.log("Sending payload: " + payload)
+        tcLogger.info("Sending payload: " + payload)
 
         // Send POST request
         await axios.post(config.thermocontrol_url + "/json", payload, {
@@ -26,19 +27,18 @@ export const sendData = async (data: TcSettableDataType) => {
                 'Content-Type': 'text/plain',
             },
         });
-        console.log("Payload successfully sent");
     } catch (error: any) {
-        console.error("Error occurred while sending data:", error.message || error);
+        tcLogger.error("Error occurred while sending data:", error.message || error);
 
         // Log additional error details if available
         if (error.response) {
-            console.error("Response data:", error.response.data);
-            console.error("Response status:", error.response.status);
-            console.error("Response headers:", error.response.headers);
+            tcLogger.error("Response data:", error.response.data);
+            tcLogger.error("Response status:", error.response.status);
+            tcLogger.error("Response headers:", error.response.headers);
         } else if (error.request) {
-            console.error("Request made but no response received:", error.request);
+            tcLogger.error("Request made but no response received:", error.request);
         } else {
-            console.error("Error in setting up the request:", error.message);
+            tcLogger.error("Error while setting up the request:", error.message);
         }
 
         // Optionally, rethrow the error if you need to handle it elsewhere

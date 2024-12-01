@@ -6,7 +6,6 @@ import { KalRestService } from "../KalRestService";
 import { KalWebSocketService } from "../KalWebSocketService";
 import { KalUpdater } from "./KalUpdater";
 import { setContinuousParameter_mock, setDiscreteParameter_mock, setProgram_mock } from "../../infrastructure/mock/mockData";
-import { setContinuousParameter } from "../../kaleidoscopeREST";
 
 export class KaleidoscopeSet {
     constructor(

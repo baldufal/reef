@@ -2,6 +2,7 @@ import axios from "axios";
 import { KalRestService } from "../../application/KalRestService";
 import { FixturesData } from "../../domain/RestTypes";
 import { kaleidoscopeMockData } from "../mock/mockData";
+import { kalLogger } from "../../../logging";
 
 export class KalRestServiceImpl implements KalRestService {
 
@@ -13,39 +14,56 @@ export class KalRestServiceImpl implements KalRestService {
     async fetchData(): Promise<FixturesData | null> {
         if (this.kaleidoscopeMock)
             return Promise.resolve(kaleidoscopeMockData as FixturesData);
-
-        return (await axios.get<any>(`${this.kaleidoscopeUrl}/api/v1/fixtures`)).data as FixturesData;
+        try {
+            return (await axios.get<FixturesData>(`${this.kaleidoscopeUrl}/api/v1/fixtures`)).data as FixturesData;
+        } catch (error) {
+            kalLogger.error("Error while fetching kaleidoscope data: " + error);
+        }
+        return null;
     }
-
-    async setProgram(fixture: string, program: string): Promise<string | null> {
+    async setProgram(fixture: string, program: string): Promise<void> {
         const url = `${this.kaleidoscopeUrl}/api/v1/fixtures/${fixture}/set_active_program`;
         const payload = program;
-        return this.sendData(url, payload);
+        kalLogger.info(`Sending program to ${url}`);
+        try {
+            await axios.post(url, payload, {
+                headers: {
+                    'Content-Type': 'text/plain',
+                },
+            });
+        } catch (error) {
+            kalLogger.error("Error while sending data: " + error)
+        }
     }
 
-    async setDiscreteParameter(fixture: string, program: string, parameter: string, value: string): Promise<string | null> {
+    async setDiscreteParameter(fixture: string, program: string, parameter: string, value: string): Promise<void> {
         const payload = JSON.stringify({ type: "discrete", level: value })
         const url = `${this.kaleidoscopeUrl}/api/v1/fixtures/${fixture}/programs/${program}/parameters/${parameter}`;
-        return this.sendData(url, payload);
-    }
-
-    async setContinuousParameter(fixture: string, program: string, parameter: string, value: number): Promise<string | null> {
-        const payload = JSON.stringify({ type: "continuous", value: value })
-        const url = `${this.kaleidoscopeUrl}/api/v1/fixtures/${fixture}/programs/${program}/parameters/${parameter}`;
-        return this.sendData(url, payload);
-    }
-
-    private sendData = async (url: string, payload: string): Promise<string | null> => {
-        console.log(`Sending ${payload} to ${url}`)
+        kalLogger.info(`Sending discrete parameter to ${url}`);
         try {
             await axios.post(url, payload, {
                 headers: {
                     'Content-Type': 'application/json',
                 },
             });
-            return null;
         } catch (error) {
-            return "error";
+            kalLogger.error("Error while sending data: " + error)
         }
     }
+
+    async setContinuousParameter(fixture: string, program: string, parameter: string, value: number): Promise<void> {
+        const payload = JSON.stringify({ type: "continuous", value: value })
+        const url = `${this.kaleidoscopeUrl}/api/v1/fixtures/${fixture}/programs/${program}/parameters/${parameter}`;
+        kalLogger.info(`Sending payload to ${url}`);
+        try {
+            await axios.post(url, payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+        } catch (error) {
+            kalLogger.error("Error while sending data: " + error)
+        }
+    }
+
 }

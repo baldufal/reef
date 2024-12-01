@@ -26,6 +26,10 @@ import { KalUpdater } from './kaleidoscope/application/usecases/KalUpdater';
 import { KalWebSocketServiceImpl } from './kaleidoscope/infrastructure/adapters/KalWebSocketServiceImpl';
 import { KaleidoscopeSet } from './kaleidoscope/application/usecases/KaleidoscopeSet';
 import { KalWebSocketAdapter } from './kaleidoscope/infrastructure/adapters/KalWebSocketAdapter';
+import { serverLogger } from './logging';
+import { GetUsersUseCase } from './user_management/application/usecases/GetUsersUseCase';
+import { UpdateUserUseCase } from './user_management/application/usecases/UpdateUserUseCase';
+import { UserController } from './user_management/infrastructure/controllers/UserController';
 
 const app = express();
 app.use(bodyParser.json());
@@ -44,6 +48,15 @@ const createUserResponseUseCase = new CreateUserResponseUseCase(userConfigReposi
 const loginUseCase = new LoginUseCase(userRepository, createUserResponseUseCase);
 const loginController = new LoginController(loginUseCase);
 app.post('/login', (req, res) => loginController.handle(req, res));
+
+const getUsersUseCase = new GetUsersUseCase(userRepository);
+const updateUserUseCase = new UpdateUserUseCase(userRepository);
+const userController = new UserController(
+  updateUserUseCase,
+  getUsersUseCase
+);
+app.get('/users', (req, res) => userController.handleGetUsers(req, res));
+app.post('/update-user', (req, res) => userController.handleUpdateUser(req, res));
 
 
 const saveUserConfigUseCase = new SaveUserConfigUseCase(userConfigRepository);
@@ -77,7 +90,7 @@ const kalWebSocketAdapter = new KalWebSocketAdapter(kalUpdater, kalSet);
 wss.on('connection', (ws: WebSocket, req: Request) => {
   const url = new URL(req.url as string, `http://${req.headers.host}`);
   const path = url.pathname;
-  console.log(`Incoming connection to path ` + path);
+  serverLogger.info(`Incoming connection to path ` + path);
 
   // Routing based on path
   if (path === '/kaleidoscope') {
@@ -89,12 +102,12 @@ wss.on('connection', (ws: WebSocket, req: Request) => {
   }
 
   ws.on('close', () => {
-    console.log(`Connection closed for path ` + path);
+    serverLogger.info(`Connection closed for path ` + path);
   });
 });
 
 
 // Start the HTTP server
 httpServer.listen(config.port, () => {
-  console.log('Server running on port ' + config.port);
+  serverLogger.info('Server running on port ' + config.port);
 });

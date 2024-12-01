@@ -1,6 +1,12 @@
 {
   "port": 8443,
 
+   "cli_log_level": "http",
+   "file_logging": false,
+   "file_log_level": "info",
+
+   "admin_password": "PLACE PASSWORD HERE",
+
   "token_expiry_seconds": 3600,
   "jwt_secret": "PLACE SECRET HERE",
 

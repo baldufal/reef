@@ -34,7 +34,7 @@ describe('TokenService', () => {
     userRepositoryMock.findByUsername.mockResolvedValue({
       username: 'testUser',
       permissions: [Permission.LIGHT], // Add any permissions for the user
-      password: 'hashedPassword',
+      password_hash: 'hashedPassword',
       hasPermission: jest.fn(),
     });
   
@@ -59,7 +59,7 @@ describe('TokenService', () => {
     userRepositoryMock.findByUsername.mockResolvedValue({
       username: 'testUser',
       permissions: [Permission.LIGHT],
-      password: 'hashedPassword',
+      password_hash: 'hashedPassword',
       hasPermission: jest.fn(),
     });
 
@@ -73,7 +73,7 @@ describe('TokenService', () => {
     userRepositoryMock.findByUsername.mockResolvedValue({
       username: 'testUser',
       permissions: [Permission.HEATING],
-      password: 'hashedPassword',
+      password_hash: 'hashedPassword',
       hasPermission: jest.fn(),
     });
 

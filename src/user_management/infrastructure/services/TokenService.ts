@@ -2,6 +2,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { User } from '../../domain/entities/User';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 import { Permission } from '../../domain/entities/User';
+import { userManagementLogger } from '../../../logging';
 
 export enum PermissionStatus {
   OK = 'OK',
@@ -61,7 +62,6 @@ export class TokenService {
   async validateToken(token: string): Promise<{ user: User | undefined; error: string }> {
     try {
       const decoded = jwt.verify(token, this.secret) as JwtPayload;
-      console.log('Decoded Token:', decoded); // See the decoded token
 
       const user = await this.userRepository.findByUsername(decoded.username);
       if (!user) {
@@ -70,7 +70,7 @@ export class TokenService {
 
       return { user, error: '' }; // Token is valid
     } catch (err) {
-      console.error('Token validation error:', err);
+      userManagementLogger.info('Token validation error:', err);
       return { user: undefined, error: 'Token expired or invalid' };
     }
   }
@@ -83,7 +83,7 @@ export class TokenService {
       const decoded = jwt.verify(token, this.secret) as JwtPayload;
       return decoded.username;
     } catch (err) {
-      console.error('Failed to extract username from token:', err);
+      userManagementLogger.info('Failed to extract username from token:', err);
       return undefined;
     }
   }

@@ -1,6 +1,7 @@
 import { TcMessage, TcUpdates } from "../../domain/entities/WebSocketMessages";
 import WebSocket from "ws";
 import { TcRestService } from "../TcRestService";
+import { tcLogger } from "../../../logging";
 
 export class TcUpdater {
     private clients: Set<WebSocket> = new Set();
@@ -41,7 +42,7 @@ export class TcUpdater {
                     this.latestData.stale = true;
             }
         } catch (error) {
-            console.error("Error fetching data:", error);
+            tcLogger.error("Error fetching data:", error);
         }
     }
 
@@ -56,7 +57,7 @@ export class TcUpdater {
                     this.latestDataAux.stale = true;
             }
         } catch (error) {
-            console.error("Error fetching aux data:", error);
+            tcLogger.error("Error fetching aux data:", error);
         }
     }
 
@@ -75,7 +76,7 @@ export class TcUpdater {
                 }
             }
         } catch (error) {
-            console.error('Error during tc broadcast:', error);
+            tcLogger.error('Error during tc broadcast:', error);
         }
     }
 
