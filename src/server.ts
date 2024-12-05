@@ -30,6 +30,7 @@ import { serverLogger } from './logging';
 import { GetUsersUseCase } from './user_management/application/usecases/GetUsersUseCase';
 import { UpdateUserUseCase } from './user_management/application/usecases/UpdateUserUseCase';
 import { UserController } from './user_management/infrastructure/controllers/UserController';
+import { DeleteUserUseCase } from './user_management/application/usecases/DeleteUserUseCase';
 
 const app = express();
 app.use(bodyParser.json());
@@ -51,12 +52,15 @@ app.post('/login', (req, res) => loginController.handle(req, res));
 
 const getUsersUseCase = new GetUsersUseCase(userRepository);
 const updateUserUseCase = new UpdateUserUseCase(userRepository);
+const deleteUserUseCase = new DeleteUserUseCase(userRepository);
 const userController = new UserController(
   updateUserUseCase,
-  getUsersUseCase
+  getUsersUseCase,
+  deleteUserUseCase
 );
 app.get('/users', (req, res) => userController.handleGetUsers(req, res));
 app.post('/update-user', (req, res) => userController.handleUpdateUser(req, res));
+app.post('/delete-user', (req, res) => userController.handleDeleteUser(req, res));
 
 
 const saveUserConfigUseCase = new SaveUserConfigUseCase(userConfigRepository);

@@ -1,8 +1,9 @@
 import { UserRepository } from '../../domain/repositories/UserRepository';
-import { User, Permission, defaultUsers } from '../../domain/entities/User';
+import { User, Permission, defaultUsers, UserUpdate } from '../../domain/entities/User';
 import { connectToDatabase } from './../services/mongodb'; // Import MongoDB connection
 import { userManagementLogger } from '../../../logging';
-import { Collection, Db, Document } from 'mongodb';
+import { Collection, Document } from 'mongodb';
+import bcrypt from 'bcryptjs';
 
 interface UserDoc extends Document {
   username: string;
@@ -25,29 +26,38 @@ export class UserRepositoryImpl implements UserRepository {
       });
   }
 
+  async delete(username: string): Promise<void> {
+    if (!this.usersCollection) {
+      userManagementLogger.error('Cannot delete user. Database not connected.');
+      return;
+    }
+
+    try {
+      const result = await this.usersCollection.deleteOne({ username });
+      if (result.deletedCount === 0) {
+        userManagementLogger.info(`User with username ${username} not found.`);
+      } else {
+        userManagementLogger.info(`User with username ${username} deleted successfully.`);
+      }
+    } catch (error) {
+      userManagementLogger.error('Error deleting user:', error);
+    }
+  }
+
   private async initializeDefaultUsers(): Promise<void> {
     if (!this.usersCollection) {
       throw new Error('Database not connected');
     }
 
     for (const user of defaultUsers) {
-      const existingUser = await this.usersCollection.findOne({ username: user.username });
-      if (!existingUser) {
-        await this.usersCollection.insertOne({
-          username: user.username,
-          password_hash: user.password_hash,
-          permissions: user.permissions,
-        });
-        userManagementLogger.info(`Default user '${user.username}' added.`);
-      } else {
-        userManagementLogger.info(`Default user '${user.username}' already exists.`);
-      }
+      this.save(user);
     }
   }
 
   async findAll(): Promise<User[]> {
     if (!this.usersCollection) {
-      throw new Error('Database not connected');
+      userManagementLogger.error('Cannot retrieve users. Database not connected.');
+      return [];
     }
 
     const userDocs = await this.usersCollection.find().toArray();
@@ -60,38 +70,46 @@ export class UserRepositoryImpl implements UserRepository {
 
   async findByUsername(username: string): Promise<User | null> {
     if (!this.usersCollection) {
-      throw new Error('Database not connected');
+      userManagementLogger.error('Cannot search user. Database not connected.');
+      return null;
     }
 
     const userDoc = await this.usersCollection.findOne({ username });
     if (userDoc) {
       return new User(userDoc.username, userDoc.password_hash, userDoc.permissions);
     }
+    userManagementLogger.info("User not found");
     return null;
   }
 
   // Saves or updates user with the given username
-  async save(user: User): Promise<void> {
+  async save(user: UserUpdate): Promise<void> {
     if (!this.usersCollection) {
-      throw new Error('Database not connected');
+      userManagementLogger.error('Cannot save user. Database not connected.');
+      return;
     }
 
     const existingUser = await this.usersCollection.findOne({ username: user.username });
+    const updateFields: any = {};
+
+    if (user.password) {
+      updateFields.password_hash = bcrypt.hashSync(user.password);
+    }
+    if (user.permissions) {
+      updateFields.permissions = user.permissions;
+    }
+
     if (existingUser) {
+      userManagementLogger.info(`Updating user with username ${user.username}`);
       await this.usersCollection.updateOne(
         { username: user.username },
-        {
-          $set: {
-            password_hash: user.password_hash,
-            permissions: user.permissions,
-          },
-        }
+        { $set: updateFields }
       );
     } else {
+      userManagementLogger.info(`Creating user with username ${user.username}`);
       await this.usersCollection.insertOne({
         username: user.username,
-        password_hash: user.password_hash,
-        permissions: user.permissions,
+        ...updateFields,
       });
     }
   }
