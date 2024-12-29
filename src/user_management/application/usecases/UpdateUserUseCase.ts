@@ -10,7 +10,7 @@ export class UpdateUserUseCase {
             userManagementLogger.info('Admin user cannot be updated');
             return 'Admin user cannot be updated';
         }
-        await this.userRepository.save(user);
+        await this.userRepository.updateUser(user);
         return null;
     }
 }

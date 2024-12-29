@@ -1,10 +1,10 @@
 import { UserConfig } from '../../domain/entities/UserConfig';
-import { UserConfigRepository } from '../../domain/repositories/UserConfigRepository';
+import { UserRepository } from '../../domain/repositories/UserRepository';
 
 export class GetUserConfigUseCase {
-  constructor(private userConfigRepository: UserConfigRepository) {}
+  constructor(private userRepository: UserRepository) {}
 
-  async execute(username: string): Promise<UserConfig> {
-    return await this.userConfigRepository.getConfig(username);
+  async execute(username: string): Promise<UserConfig | null> {
+    return (await this.userRepository.findByUsername(username))?.config || null;
   }
 }

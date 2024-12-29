@@ -4,11 +4,13 @@ import { connectToDatabase } from './../services/mongodb'; // Import MongoDB con
 import { userManagementLogger } from '../../../logging';
 import { Collection, Document } from 'mongodb';
 import bcrypt from 'bcryptjs';
+import { UserConfig } from '../../domain/entities/UserConfig';
 
 interface UserDoc extends Document {
   username: string;
   password_hash: string;
   permissions: Permission[];
+  config: UserConfig;
 }
 
 export class UserRepositoryImpl implements UserRepository {
@@ -19,12 +21,19 @@ export class UserRepositoryImpl implements UserRepository {
       .then((db) => {
         this.usersCollection = db.collection('users');
         userManagementLogger.info('Connected to MongoDB for user repository');
-        this.initializeDefaultUsers(); // Initialize default users
+
+        // Create unique index on username field
+        this.usersCollection.createIndex({ username: 1 }, { unique: true })
+          .then(() => userManagementLogger.info('Unique index on username created.'))
+          .catch((error) => userManagementLogger.error('Error creating unique index on username:', error));
+
+        this.initializeDefaultUsers();
       })
       .catch((error) => {
         userManagementLogger.error('Error connecting to MongoDB:', error);
       });
   }
+
 
   async delete(username: string): Promise<void> {
     if (!this.usersCollection) {
@@ -45,13 +54,13 @@ export class UserRepositoryImpl implements UserRepository {
   }
 
   private async initializeDefaultUsers(): Promise<void> {
-    if (!this.usersCollection) {
+    if (!this.usersCollection)
       throw new Error('Database not connected');
-    }
-
-    for (const user of defaultUsers) {
-      this.save(user);
-    }
+    for (const user of defaultUsers)
+      if ( await this.usersCollection.findOne({ username: user.username }) === null) {
+        userManagementLogger.info(`Default user ${user.username} not found. Creating...`);
+        this.saveNewUser(user);
+      }
   }
 
   async findAll(): Promise<User[]> {
@@ -61,11 +70,7 @@ export class UserRepositoryImpl implements UserRepository {
     }
 
     const userDocs = await this.usersCollection.find().toArray();
-    return userDocs.map(userDoc => new User(
-      userDoc.username,
-      userDoc.password_hash,
-      userDoc.permissions
-    ));
+    return userDocs.map(userDoc => this.userFromDoc(userDoc));
   }
 
   async findByUsername(username: string): Promise<User | null> {
@@ -76,41 +81,74 @@ export class UserRepositoryImpl implements UserRepository {
 
     const userDoc = await this.usersCollection.findOne({ username });
     if (userDoc) {
-      return new User(userDoc.username, userDoc.password_hash, userDoc.permissions);
+      return this.userFromDoc(userDoc);
     }
     userManagementLogger.info("User not found");
     return null;
   }
 
-  // Saves or updates user with the given username
-  async save(user: UserUpdate): Promise<void> {
+  async saveNewUser(user: User): Promise<string | null> {
     if (!this.usersCollection) {
       userManagementLogger.error('Cannot save user. Database not connected.');
+      return 'Database not connected';
+    }
+
+    try {
+      await this.usersCollection.insertOne({
+        username: user.username,
+        password_hash: user.password_hash,
+        permissions: user.permissions,
+        config: user.config,
+      });
+      userManagementLogger.info(`New user with username ${user.username} saved successfully.`);
+      return null;
+    } catch (error) {
+      if ((error as any)?.code && (error as any).code === 11000) {
+        userManagementLogger.info(`Username '${user.username}' already exists.`, error);
+        return `Username '${user.username}' already exists.`;
+      } else {
+        userManagementLogger.error('Error saving new user:', error);
+        return 'Error saving new user';
+      }
+    }
+  }
+
+  async updateUser(user: UserUpdate): Promise<void> {
+    if (!this.usersCollection) {
+      userManagementLogger.error('Cannot update user. Database not connected.');
       return;
     }
 
-    const existingUser = await this.usersCollection.findOne({ username: user.username });
     const updateFields: any = {};
-
     if (user.password) {
       updateFields.password_hash = bcrypt.hashSync(user.password);
     }
     if (user.permissions) {
       updateFields.permissions = user.permissions;
     }
+    if (user.config) {
+      updateFields.config = user.config;
+    }
 
-    if (existingUser) {
-      userManagementLogger.info(`Updating user with username ${user.username}`);
+    try {
       await this.usersCollection.updateOne(
         { username: user.username },
         { $set: updateFields }
       );
-    } else {
-      userManagementLogger.info(`Creating user with username ${user.username}`);
-      await this.usersCollection.insertOne({
-        username: user.username,
-        ...updateFields,
-      });
+      userManagementLogger.info(`User with username ${user.username} updated successfully.`);
+    } catch (error) {
+      userManagementLogger.error('Error updating user:', error);
     }
   }
+
+  private userFromDoc(userDoc: UserDoc): User {
+    return new User(
+      userDoc.username,
+      userDoc.password_hash,
+      userDoc.permissions,
+      userDoc.config,
+    );
+  }
 }
+
+

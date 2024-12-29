@@ -3,28 +3,25 @@ import { SaveUserConfigUseCase } from '../../application/usecases/SaveUserConfig
 import { GetUserConfigUseCase } from '../../application/usecases/GetUserConfigUseCase';
 import { TokenService } from '../services/TokenService';
 import { userManagementLogger } from '../../../logging';
+import { Permission } from '../../domain/entities/User';
+import { checkRequestPermission } from './checkRequestPermission';
 
 export class UserConfigController {
   constructor(
     private saveUserConfigUseCase: SaveUserConfigUseCase,
-    private getUserConfigUseCase: GetUserConfigUseCase  ) {}
+    private getUserConfigUseCase: GetUserConfigUseCase) { }
 
   async handleSaveConfig(req: Request, res: Response): Promise<Response> {
     userManagementLogger.http('Received request to safe user configuration');
     try {
-      const token = req.query.token as string;
-      if (!token) {
-        userManagementLogger.info('No token provided');
-        return res.status(401).json({ message: 'No token provided' });
+      const { user, tokenError } = await checkRequestPermission(req);
+
+      if (tokenError) {
+        userManagementLogger.info(tokenError);
+        return res.status(401).json({ message: tokenError });
       }
 
-      const { user, error } = await TokenService.getInstance().validateToken(token);
-      if (!user) {
-        userManagementLogger.info('Invalid token:', error);
-        return res.status(401).json({ message: error });
-      }
-
-      await this.saveUserConfigUseCase.execute(user.username, req.body);
+      await this.saveUserConfigUseCase.execute(user!.username, req.body);
       return res.json({ message: 'Configuration saved successfully' });
     } catch (error) {
       userManagementLogger.error('Error saving configuration:', error);
@@ -38,19 +35,13 @@ export class UserConfigController {
   async handleGetConfig(req: Request, res: Response): Promise<Response> {
     userManagementLogger.http('Received request to get user configuration');
     try {
-      const token = req.query.token as string;
-      if (!token) {
-        userManagementLogger.info('No token provided');
-        return res.status(401).json({ message: 'No token provided' });
+      const { user, tokenError } = await checkRequestPermission(req, Permission.USER_MANAGEMENT);
+      if (tokenError) {
+        userManagementLogger.info(tokenError);
+        return res.status(401).json({ message: tokenError });
       }
 
-      const { user, error } = await TokenService.getInstance().validateToken(token);
-      if (!user) {
-        userManagementLogger.info('Invalid token:', error);
-        return res.status(401).json({ message: error });
-      }
-
-      const userConfig = await this.getUserConfigUseCase.execute(user.username);
+      const userConfig = await this.getUserConfigUseCase.execute(user!.username);
       return res.json(userConfig);
     } catch (error) {
       userManagementLogger.error('Error fetching configuration:', error);

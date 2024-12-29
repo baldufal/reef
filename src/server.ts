@@ -14,7 +14,6 @@ import { SaveUserConfigUseCase } from './user_management/application/usecases/Sa
 import { LoginController } from './user_management/infrastructure/controllers/LoginController';
 import { RefreshTokenController } from './user_management/infrastructure/controllers/RefreshTokenController';
 import { UserConfigController } from './user_management/infrastructure/controllers/UserConfigController';
-import { UserConfigRepositoryImpl } from './user_management/infrastructure/repositories/UserConfigRepositoryImpl';
 import { UserRepositoryImpl } from './user_management/infrastructure/repositories/UserRepositoryImpl';
 import { TokenService } from './user_management/infrastructure/services/TokenService';
 import { TcMessageHandler } from './thermocontrol/application/usecases/TcMessageHandler';
@@ -31,6 +30,7 @@ import { GetUsersUseCase } from './user_management/application/usecases/GetUsers
 import { UpdateUserUseCase } from './user_management/application/usecases/UpdateUserUseCase';
 import { UserController } from './user_management/infrastructure/controllers/UserController';
 import { DeleteUserUseCase } from './user_management/application/usecases/DeleteUserUseCase';
+import { CreateUserUseCase } from './user_management/application/usecases/CreateUserUseCase';
 
 const app = express();
 app.use(bodyParser.json());
@@ -42,10 +42,9 @@ const wss = new WebSocketServer({ server: httpServer });
 
 
 const userRepository = new UserRepositoryImpl();
-const userConfigRepository = new UserConfigRepositoryImpl();
 TokenService.initialize(config.jwt_secret, config.token_expiry_seconds, userRepository);
 
-const createUserResponseUseCase = new CreateUserResponseUseCase(userConfigRepository);
+const createUserResponseUseCase = new CreateUserResponseUseCase(userRepository);
 const loginUseCase = new LoginUseCase(userRepository, createUserResponseUseCase);
 const loginController = new LoginController(loginUseCase);
 app.post('/login', (req, res) => loginController.handle(req, res));
@@ -53,22 +52,24 @@ app.post('/login', (req, res) => loginController.handle(req, res));
 const getUsersUseCase = new GetUsersUseCase(userRepository);
 const updateUserUseCase = new UpdateUserUseCase(userRepository);
 const deleteUserUseCase = new DeleteUserUseCase(userRepository);
+const createUserUseCase = new CreateUserUseCase(userRepository);
 const userController = new UserController(
   updateUserUseCase,
   getUsersUseCase,
-  deleteUserUseCase
+  deleteUserUseCase,
+  createUserUseCase
 );
 app.get('/users', (req, res) => userController.handleGetUsers(req, res));
+app.post('/create-user', (req, res) => userController.handleCreateUser(req, res));
 app.post('/update-user', (req, res) => userController.handleUpdateUser(req, res));
 app.post('/delete-user', (req, res) => userController.handleDeleteUser(req, res));
 
 
-const saveUserConfigUseCase = new SaveUserConfigUseCase(userConfigRepository);
-const getUserConfigUseCase = new GetUserConfigUseCase(userConfigRepository);
+const saveUserConfigUseCase = new SaveUserConfigUseCase(userRepository);
+const getUserConfigUseCase = new GetUserConfigUseCase(userRepository);
 const userConfigController = new UserConfigController(
   saveUserConfigUseCase,
-  getUserConfigUseCase
-);
+  getUserConfigUseCase);
 app.post('/userconfig', (req, res) => userConfigController.handleSaveConfig(req, res));
 app.get('/userconfig', (req, res) => userConfigController.handleGetConfig(req, res));
 

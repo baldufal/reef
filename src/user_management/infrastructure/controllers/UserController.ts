@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import { TokenService } from '../services/TokenService';
 import { userManagementLogger } from '../../../logging';
 import { UpdateUserUseCase } from '../../application/usecases/UpdateUserUseCase';
 import { GetUsersUseCase } from '../../application/usecases/GetUsersUseCase';
-import { Permission, UserUpdate, isUserUpdate } from '../../domain/entities/User';
+import { Permission, User, UserCreationRequest, UserUpdate, createUserFromRequest, isUserCreationRequest, isUserUpdate } from '../../domain/entities/User';
 import { DeleteUserUseCase } from '../../application/usecases/DeleteUserUseCase';
+import { checkRequestPermission } from './checkRequestPermission';
+import { CreateUserUseCase } from '../../application/usecases/CreateUserUseCase';
 
 type UserResponse = [{ username: string, permissions: Permission[] }];
 
@@ -12,26 +13,16 @@ export class UserController {
     constructor(
         private updateUserUseCase: UpdateUserUseCase,
         private getUsersUseCase: GetUsersUseCase,
-        private deleteUserUseCase: DeleteUserUseCase) { }
+        private deleteUserUseCase: DeleteUserUseCase,
+    private createUserUseCase: CreateUserUseCase) { }
 
     async handleGetUsers(req: Request, res: Response): Promise<Response> {
         userManagementLogger.http('Received request to get users');
         try {
-            const token = req.query.token as string;
-            if (!token) {
-                userManagementLogger.info('No token provided');
-                return res.status(401).json({ message: 'No token provided' });
-            }
-
-            const { user, error } = await TokenService.getInstance().validateToken(token);
-            if (!user) {
-                userManagementLogger.info('Invalid token:', error);
-                return res.status(401).json({ message: error });
-            }
-
-            if (!user.hasPermission(Permission.USER_MANAGEMENT)) {
-                userManagementLogger.info('Unauthorized');
-                return res.status(401).json({ message: 'Unauthorized' });
+            const { tokenError } = await checkRequestPermission(req, Permission.USER_MANAGEMENT);
+            if (tokenError) {
+                userManagementLogger.info(tokenError);
+                return res.status(401).json({ message: tokenError });
             }
 
             const all_users = await this.getUsersUseCase.execute();
@@ -47,22 +38,9 @@ export class UserController {
     async handleDeleteUser(req: Request, res: Response): Promise<Response> {
         userManagementLogger.http('Received request to delete user');
         try {
-            const token = req.query.token as string;
-            if (!token) {
-                userManagementLogger.info('No token provided');
-                return res.status(401).json({ message: 'No token provided' });
-            }
-
-            const { user, error } = await TokenService.getInstance().validateToken(token);
-            if (!user) {
-                userManagementLogger.info('Invalid token:', error);
-                return res.status(401).json({ message: error });
-            }
-
-            if (!user.hasPermission(Permission.USER_MANAGEMENT)) {
-                userManagementLogger.info('Unauthorized');
-                return res.status(401).json({ message: 'Unauthorized' });
-            }
+            const {tokenError} = await checkRequestPermission(req, Permission.USER_MANAGEMENT);
+            if (tokenError)
+                return res.status(401).json({ message: tokenError });
 
             if (typeof req.body !== 'object' || typeof req.body.username !== 'string') {
                 userManagementLogger.info('Invalid request body');
@@ -71,7 +49,7 @@ export class UserController {
 
             const errormessage = await this.deleteUserUseCase.execute(req.body.username as string);
             if (errormessage)
-                return res.status(401).json({ message: error });
+                return res.status(401).json({ message: errormessage });
             return res.status(200).json({ message: 'User deleted successfully' });
         } catch (error) {
             userManagementLogger.error('Error deleting user:', error);
@@ -83,22 +61,10 @@ export class UserController {
     async handleUpdateUser(req: Request, res: Response): Promise<Response> {
         userManagementLogger.http('Received request to update user');
         try {
-            const token = req.query.token as string;
-            if (!token) {
-                userManagementLogger.info('No token provided');
-                return res.status(401).json({ message: 'No token provided' });
-            }
+            const {tokenError} = await checkRequestPermission(req, Permission.USER_MANAGEMENT);
+            if (tokenError)
+                return res.status(401).json({ message: tokenError });
 
-            const { user, error } = await TokenService.getInstance().validateToken(token);
-            if (!user) {
-                userManagementLogger.info('Invalid token:', error);
-                return res.status(401).json({ message: error });
-            }
-
-            if (!user.hasPermission(Permission.USER_MANAGEMENT)) {
-                userManagementLogger.info('Unauthorized');
-                return res.status(401).json({ message: 'Unauthorized' });
-            }
 
             if (!isUserUpdate(req.body)) {
                 userManagementLogger.info('Invalid request body');
@@ -106,13 +72,44 @@ export class UserController {
             }
 
             const errormessage = await this.updateUserUseCase.execute(req.body as UserUpdate);
-            if (errormessage){
-                userManagementLogger.error('Error updating user:', error);
-                return res.status(401).json({ message: error });
+            if (errormessage) {
+                userManagementLogger.error('Error updating user:', errormessage);
+                return res.status(401).json({ message: errormessage });
             }
+
             return res.status(200).json({ message: 'User updated successfully' });
+
         } catch (error) {
-            userManagementLogger.error('Error fetching configuration:', error);
+            userManagementLogger.error('Error updating user', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+
+    async handleCreateUser(req: Request, res: Response): Promise<Response> {
+        userManagementLogger.http('Received request to create user');
+        try {
+            const {tokenError} = await checkRequestPermission(req, Permission.USER_MANAGEMENT);
+            if (tokenError)
+                return res.status(401).json({ message: tokenError });
+
+
+            if (!isUserCreationRequest(req.body)) {
+                userManagementLogger.info('Invalid request body');
+                return res.status(400).json({ message: 'Invalid request body' });
+            }
+
+            const user = createUserFromRequest(req.body as UserCreationRequest);
+
+            const errormessage = await this.createUserUseCase.execute(user);
+            if (errormessage) {
+                userManagementLogger.error('Error creating user:', errormessage);
+                return res.status(401).json({ message: errormessage });
+            }
+
+            return res.status(200).json({ message: 'User created successfully' });
+
+        } catch (error) {
+            userManagementLogger.error('Error creating user:', error);
             return res.status(500).json({ message: 'Internal server error' });
         }
     }

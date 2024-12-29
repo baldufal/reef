@@ -9,4 +9,3 @@ export class UserConfig {
       return new UserConfig([]);
     }
   }
-  
