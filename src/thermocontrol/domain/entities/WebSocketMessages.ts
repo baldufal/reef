@@ -37,4 +37,5 @@ export const TCSetSchema = z.object({
   target_temperature: z.number().optional(),
   use_ventilation_for_cooling: z.boolean().optional(),
   use_ventilation_for_heating: z.boolean().optional(),
+  heizstrahler_is_active: z.boolean().optional(),
 });
