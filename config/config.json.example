@@ -21,5 +21,7 @@
 
   "kaleidoscope_mock": true,
   "kaleidoscope_polling_rate": 300,
-  "kaleidoscope_url": "http://10.0.2.2:3545"
+  "kaleidoscope_url": "http://10.0.2.2:3545",
+
+  "fallback_mongo_url": "mongodb://USER:PASSWORD@localhost:27017/user_management?authSource=admin"
 }

@@ -25,6 +25,8 @@ interface Config {
     kaleidoscope_mock: boolean;
     kaleidoscope_polling_rate: number;
     kaleidoscope_url: string;
+
+    fallback_mongo_url: string;
 }
 
 const loadConfig = (): Config => {
