@@ -1,4 +1,5 @@
 import { userManagementLogger } from '../../../logging';
+import { User } from '../../domain/entities/User';
 import { UserConfig } from '../../domain/entities/UserConfig';
 import { UserRepository } from '../../domain/repositories/UserRepository';
 
@@ -10,7 +11,7 @@ export class SaveUserConfigUseCase {
       userManagementLogger.error('Invalid user configuration format');
     }
 
-    const userConfig = new UserConfig(newConfig.dashboard);
+    const userConfig = new UserConfig(newConfig.dashboard, newConfig.scripts || UserConfig.createDefault().scripts);
     await this.userRepository.updateUser({username, config: userConfig});
   }
 }

@@ -3,6 +3,7 @@ import { User } from '../../domain/entities/User';
 import { TokenService } from '../../infrastructure/services/TokenService';
 import { userManagementLogger } from '../../../logging';
 import { UserRepository } from '../../domain/repositories/UserRepository';
+import { UserConfig } from '../../domain/entities/UserConfig';
 
 export class CreateUserResponseUseCase {
   constructor(
@@ -22,7 +23,7 @@ export class CreateUserResponseUseCase {
       username: user.username,
       tokenExpiration: expirationTime,
       permissions: user.permissions,
-      userConfig: userConfig ? userConfig : { dashboard: [] },
+      userConfig: userConfig ? userConfig : UserConfig.createDefault(),
     };
   }
 }
