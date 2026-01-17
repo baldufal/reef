@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { RefreshTokenUseCase } from '../../application/usecases/RefreshTokenUseCase';
-import { TokenService } from '../services/TokenService';
 import { userManagementLogger } from '../../../logging';
 import { checkRequestPermission } from './checkRequestPermission';
 
